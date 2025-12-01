@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>🐣 可愛默書 Dictation</title>
+  <title>🐣默書 Dictation</title>
   <style>
     /* 固定 px，確保手機/桌面一致 */
     html, body { font-size: 18px; line-height: 1.5; }
@@ -36,6 +36,11 @@
     .muted { color:#666; }
 
     .pill { display:inline-flex; align-items:center; gap:6px; background:#fff; border:2px dashed #ffd1e2; border-radius: 999px; padding: 8px 12px; }
+
+    /* 新增：快速重播方格 */
+    .gridWords { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+    .chipWord { font-size:16px; padding:10px 12px; border:2px solid #ffd1e2; background:#fff; border-radius:999px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+    .chipWord:active { transform: translateY(1px); }
   </style>
 </head>
 <body>
@@ -50,6 +55,7 @@
         <div class="muted">輸入中文或英文詞語（逗號或每行一個）</div>
       </div>
       <textarea id="wordInput" placeholder="例：\n尋寶\n超級市場\napple, banana, orange"></textarea>
+
       <div class="hr"></div>
       <div class="section-title">⏱️ 設定</div>
       <div class="card" style="background:#fffefe">
@@ -80,6 +86,17 @@
           </select>
         </div>
         <div class="row">
+          <label for="rateSelect">語速（0.7–1.3）：</label>
+          <select id="rateSelect" class="no-shrink">
+            <option value="0.7">0.7（較慢）</option>
+            <option value="0.85">0.85</option>
+            <option value="1.0" selected>1.0（正常）</option>
+            <option value="1.1">1.1</option>
+            <option value="1.2">1.2（較快）</option>
+            <option value="1.3">1.3（更快）</option>
+          </select>
+        </div>
+        <div class="row">
           <label for="langMode">語音模式：</label>
           <select id="langMode" class="no-shrink">
             <option value="auto" selected>自動（中文→粵語、英文→英語）</option>
@@ -90,7 +107,7 @@
       </div>
 
       <div class="hr"></div>
-      <div class="section-title">🗣️ 語音（可自選更自然的英語）</div>
+      <div class="section-title">🗣️ 語音（只保留更自然的英語）</div>
       <div class="card" style="background:#f7fbff;border:2px solid #e9f0ff">
         <div class="row">
           <div class="pill">
@@ -101,13 +118,17 @@
         </div>
         <div class="row">
           <div class="pill">
-            <span>🇬🇧/🇺🇸 英語語音：</span>
+            <span>🇬🇧/🇺🇸 英語語音（白名單）：</span>
             <select id="voiceEn" class="no-shrink"></select>
             <button id="testEn" class="btn smol secondary">試聽</button>
           </div>
-          <div class="muted">（建議選擇 "Google US/UK English"、"Microsoft Aria/Sonia"、或 iOS 的 "Samantha/Karen" 等較自然的聲線）</div>
+          <div class="muted">保留：Google US/UK English、Microsoft Aria/Sonia、iOS Samantha/Karen</div>
         </div>
       </div>
+
+      <div class="hr"></div>
+      <div class="section-title">✨ 快速重播（點選任何詞語）</div>
+      <div id="gridWords" class="gridWords card" style="padding:12px;"></div>
 
       <div class="hr"></div>
       <div class="row">
@@ -130,6 +151,7 @@
     const countdown = document.getElementById('countdown');
     const repeatGap = document.getElementById('repeatGap');
     const wordGap = document.getElementById('wordGap');
+    const rateSelect = document.getElementById('rateSelect');
     const langMode = document.getElementById('langMode');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
@@ -139,32 +161,39 @@
     const voiceEnSel = document.getElementById('voiceEn');
     const testYueBtn = document.getElementById('testYue');
     const testEnBtn = document.getElementById('testEn');
+    const gridWords = document.getElementById('gridWords');
 
-    const SETTINGS_KEY = 'cute_dictation_settings_v2';
+    const SETTINGS_KEY = 'cute_dictation_settings_v3';
 
     function updatePreview(){
       const list = parseWords(wordInput.value);
       preview.textContent = list.length ? list.join(' · ') : '（沒有內容）';
+      renderGrid(list);
     }
     wordInput.addEventListener('input', ()=>{ updatePreview(); saveSettings(); });
 
-    // --- Voice preference (DECLARE BEFORE ANY USE) ---
+    // --- Voice preferences (DECLARE BEFORE USE) ---
     const preferEnOrder = [
       /microsoft aria.*english \(united states\)/i,
-      /microsoft guy.*english \(united states\)/i,
       /microsoft sonia.*english \(great britain\)/i,
       /google uk english/i,
       /google us english/i,
       /samantha/i, // iOS en-US
-      /karen/i,    // en-AU
-      /^en(-|_|\b)/i
+      /karen/i     // iOS en-AU
+    ];
+    const whitelistEn = [
+      /google (us|uk) english/i,
+      /microsoft aria.*english/i,
+      /microsoft sonia.*english/i,
+      /samantha/i,
+      /karen/i
     ];
 
     // --- SpeechSynthesis voices ---
     let voices = [];
 
     function bestEnglish(voices){
-      const list = voices.filter(v => /^en/i.test(v.lang));
+      const list = voices.filter(v => /^en/i.test(v.lang) && whitelistEn.some(rx => rx.test((v.name + ' ' + v.lang))));
       for(const rule of preferEnOrder){
         const hit = list.find(v => rule.test((v.name + ' ' + v.lang)));
         if(hit) return hit;
@@ -180,23 +209,24 @@
     }
 
     function renderVoiceOptions(){
-      // clear
       voiceYueSel.innerHTML = '';
       voiceEnSel.innerHTML = '';
 
-      // fill
       voices.forEach((v, idx)=>{
         const opt = document.createElement('option');
         opt.value = idx;
         opt.textContent = `${v.name} (${v.lang})`;
-        if (/yue|zh[-_]?HK|cantonese|粵|zh[-_]tw|hant/i.test((v.lang + ' ' + v.name))) voiceYueSel.appendChild(opt.cloneNode(true));
-        if (/^en/i.test(v.lang)) voiceEnSel.appendChild(opt);
+        if (/yue|zh[-_]?HK|cantonese|粵|zh[-_]tw|hant/i.test((v.lang + ' ' + v.name))) {
+          voiceYueSel.appendChild(opt.cloneNode(true));
+        }
+        if (/^en/i.test(v.lang) && whitelistEn.some(rx => rx.test((v.name + ' ' + v.lang)))) {
+          voiceEnSel.appendChild(opt);
+        }
       });
 
-      // default selections
+      // defaults
       const bYue = bestCantonese(voices);
       const bEn  = bestEnglish(voices);
-
       if (bYue){
         const yOpt = Array.from(voiceYueSel.options).find(o=>voices[o.value|0]===bYue);
         if (yOpt) yOpt.selected = true;
@@ -206,7 +236,7 @@
         if (eOpt) eOpt.selected = true;
       }
 
-      // restore saved
+      // restore saved indices
       const saved = loadSettings();
       if (saved) {
         if (saved.voiceYueIndex != null && voices[saved.voiceYueIndex]) {
@@ -230,19 +260,20 @@
       return new Promise(resolve=>{
         const u = new SpeechSynthesisUtterance(text);
         let voice = null;
+        const rate = parseFloat(rateSelect.value) || 1.0;
         if (mode === 'yue') {
           const idx = voiceYueSel.value|0; voice = voices[idx] || bestCantonese(voices);
-          if (voice) u.voice = voice; u.lang = voice ? voice.lang : 'zh-HK'; u.rate = 0.95; u.pitch = 1.0;
+          if (voice) u.voice = voice; u.lang = voice ? voice.lang : 'zh-HK'; u.rate = rate; u.pitch = 1.0;
         } else if (mode === 'en') {
           const idx = voiceEnSel.value|0; voice = voices[idx] || bestEnglish(voices);
-          if (voice) u.voice = voice; u.lang = voice ? voice.lang : 'en-US'; u.rate = 0.95; u.pitch = 1.0;
+          if (voice) u.voice = voice; u.lang = voice ? voice.lang : 'en-US'; u.rate = rate; u.pitch = 1.0;
         } else {
           if (isCJK(text)) {
             const idx = voiceYueSel.value|0; voice = voices[idx] || bestCantonese(voices);
-            if (voice) u.voice = voice; u.lang = voice ? voice.lang : 'zh-HK'; u.rate = 0.95; u.pitch = 1.0;
+            if (voice) u.voice = voice; u.lang = voice ? voice.lang : 'zh-HK'; u.rate = rate; u.pitch = 1.0;
           } else {
             const idx = voiceEnSel.value|0; voice = voices[idx] || bestEnglish(voices);
-            if (voice) u.voice = voice; u.lang = voice ? voice.lang : 'en-US'; u.rate = 0.95; u.pitch = 1.0;
+            if (voice) u.voice = voice; u.lang = voice ? voice.lang : 'en-US'; u.rate = rate; u.pitch = 1.0;
           }
         }
         u.onend = resolve; window.speechSynthesis.speak(u);
@@ -258,18 +289,47 @@
       speakOnce(text, 'en');
     });
 
+    // --- 快速重播邏輯 ---
+    const priorityQueue = [];
+    function renderGrid(list){
+      gridWords.innerHTML = '';
+      list.forEach(w => {
+        const b = document.createElement('button');
+        b.className = 'chipWord';
+        b.textContent = w;
+        b.title = '點我：立即重播此詞語三次';
+        b.addEventListener('click', ()=>{
+          priorityQueue.push(w);
+          statusEl.textContent = '已加入重播：'+w;
+        });
+        gridWords.appendChild(b);
+      });
+    }
+
+    async function processPriorityIfAny(rGapMs){
+      while(priorityQueue.length){
+        const w = priorityQueue.shift();
+        const mode = langMode.value;
+        statusEl.textContent = '快速重播：'+w;
+        for(let r=0;r<3;r++){
+          await speakOnce(w, mode);
+          if (r<2){ const until = Date.now()+rGapMs; while(Date.now()<until){ await sleep(30);} }
+        }
+      }
+    }
+
     // --- Run logic ---
     function setUIRunning(r){
-      startBtn.disabled = r; stopBtn.disabled = !r; wordInput.disabled = r;
-      countdown.disabled = r; repeatGap.disabled = r; wordGap.disabled = r; langMode.disabled = r;
+      startBtn.disabled = r; stopBtn.disabled = !r;
+      // 允許開始後仍可輸入新詞語
+      countdown.disabled = r; repeatGap.disabled = r; wordGap.disabled = r; rateSelect.disabled = r; langMode.disabled = r;
       voiceYueSel.disabled = r; voiceEnSel.disabled = r; testYueBtn.disabled = r; testEnBtn.disabled = r;
     }
 
     let stopFlag = false;
 
     async function run(){
-      const list = parseWords(wordInput.value);
-      if (!list.length){ alert('請先輸入詞語'); return; }
+      if (!parseWords(wordInput.value).length){ alert('請先輸入詞語'); return; }
       saveSettings();
       stopFlag = false; setUIRunning(true);
 
@@ -282,16 +342,21 @@
       const wGap = (parseInt(wordGap.value,10)||3)*1000;
       const mode = langMode.value;
 
-      for(let i=0;i<list.length;i++){
+      for(let i=0; ; i++){
+        const list = parseWords(wordInput.value);
+        if (i >= list.length) break;
         if (stopFlag) break; const w = list[i];
         statusEl.textContent = '朗讀：'+w+'  ('+(i+1)+'/'+list.length+')';
         for(let r=0;r<3;r++){
           if (stopFlag) break; await speakOnce(w, mode);
-          if (r<2){ const until = Date.now()+rGap; while(Date.now()<until){ if(stopFlag) break; await sleep(50); } }
+          if (r<2){ const until = Date.now()+rGap; while(Date.now()<until){ if(stopFlag) break; await processPriorityIfAny(120); await sleep(30); } }
         }
         if (stopFlag) break;
-        if (i<list.length-1){ statusEl.textContent='間隔中… ('+Math.round(wGap/1000)+'s)'; const untilW=Date.now()+wGap; while(Date.now()<untilW){ if(stopFlag) break; await sleep(50);} }
+        if (i<list.length-1){ statusEl.textContent='間隔中… ('+Math.round(wGap/1000)+'s)'; const untilW=Date.now()+wGap; while(Date.now()<untilW){ if(stopFlag) break; await processPriorityIfAny(120); await sleep(30);} }
       }
+
+      // 完成前，處理任何尚未播放的快速重播
+      await processPriorityIfAny(120);
 
       if(!stopFlag) statusEl.textContent='完成';
       setUIRunning(false);
@@ -306,6 +371,7 @@
         countdown: countdown.value,
         repeatGap: repeatGap.value,
         wordGap: wordGap.value,
+        rate: rateSelect.value,
         langMode: langMode.value,
         words: wordInput.value,
         voiceYueIndex: voiceYueSel.value|0,
@@ -320,34 +386,37 @@
         countdown.value = data.countdown || countdown.value;
         repeatGap.value = data.repeatGap || repeatGap.value;
         wordGap.value = data.wordGap || wordGap.value;
+        rateSelect.value = data.rate || rateSelect.value;
         langMode.value = data.langMode || langMode.value;
         wordInput.value = data.words || wordInput.value; updatePreview();
         return data;
       }catch(e){ return null; }
     }
 
-    [countdown, repeatGap, wordGap, langMode, wordInput, voiceYueSel, voiceEnSel].forEach(el=>{
+    [countdown, repeatGap, wordGap, rateSelect, langMode, wordInput, voiceYueSel, voiceEnSel].forEach(el=>{
       el.addEventListener('change', saveSettings);
       el.addEventListener('input', saveSettings);
     });
 
-    // Initial load (settings restored after voices rendered)
+    // Initial load
     loadVoices();
     loadSettings();
+    updatePreview();
 
-    // --- Minimal console tests to ensure no ReferenceError & selection logic works ---
+    // --- Minimal console tests (do not affect UI) ---
     (function(){
       try {
         const mockVoices = [
-          { name:'Some Voice', lang:'en-GB' },
-          { name:'Google US English', lang:'en-US' },
+          { name:'Random Voice', lang:'en-GB' },
+          { name:'Google UK English', lang:'en-GB' },
+          { name:'Microsoft Aria Online (Natural) - English (United States)', lang:'en-US' },
           { name:'Samantha', lang:'en-US' },
-          { name:'Microsoft Sonia Online (Natural) - English (Great Britain)', lang:'en-GB' },
+          { name:'Karen', lang:'en-AU' },
         ];
-        const en = bestEnglish(mockVoices) || {}; console.log('[TEST] bestEnglish picked:', en.name, en.lang);
-      } catch (e) {
-        console.error('[TEST] Error running bestEnglish test:', e);
-      }
+        const whitelistEn = [/google (us|uk) english/i,/microsoft aria.*english/i,/microsoft sonia.*english/i,/samantha/i,/karen/i];
+        const whitelisted = mockVoices.filter(v => /^en/i.test(v.lang) && whitelistEn.some(rx => rx.test((v.name + ' ' + v.lang))));
+        console.assert(whitelisted.length === 4, '[TEST] whitelistEn 應該只保留 4 個英語聲線');
+      } catch (e) { console.error('[TEST] Error running tests:', e); }
     })();
   </script>
 </body>
