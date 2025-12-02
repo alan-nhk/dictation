@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Dictation 251202</title>
+  <title>Dictation 251203</title>
   <style>
     /* 固定 px，確保手機/桌面一致 */
     html, body { font-size: 18px; line-height: 1.5; }
@@ -319,13 +319,20 @@
 
     async function processPriorityIfAny(rGapMs){
       const repeatN = Math.min(5, Math.max(1, parseInt(repeatCount.value,10) || 3));
+      const rGap = (parseInt(repeatGap.value,10) || 3) * 1000; // 使用與正常朗讀相同的間隔
       while(priorityQueue.length){
         const w = priorityQueue.shift();
         const mode = langMode.value;
         statusEl.textContent = '快速重播：'+w;
         for(let r=0;r<repeatN;r++){
-          await speakOnce(w, mode);
-          if (r<repeatN-1){ const until = Date.now()+rGapMs; while(Date.now()<until){ await sleep(30);} }
+          await speakOnce(w, mode); // 語速已在 speakOnce() 內與正常朗讀一致
+          if (r < repeatN - 1){
+            const until = Date.now() + rGap;
+            while(Date.now() < until){ await sleep(30);} // 使用相同的間隔時間
+          }
+        }
+      }
+    }
         }
       }
     }
