@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>🐣默書 Dictation</title>
+  <title>🐣 可愛默書 Dictation</title>
   <style>
     /* 固定 px，確保手機/桌面一致 */
     html, body { font-size: 18px; line-height: 1.5; }
@@ -49,7 +49,7 @@
       <div class="header">
         <div style="font-size:30px">🎈🐣✨</div>
         <div class="title">可愛默書 Dictation</div>
-        <span class="chip">中英皆可 · 粵語朗讀 ×3</span>
+        <span class="chip">中英皆可 · 粵語朗讀 ×3（可自選次數）</span>
       </div>
       <div class="row" style="margin-top:6px">
         <div class="muted">輸入中文或英文詞語（逗號或每行一個）</div>
@@ -83,6 +83,16 @@
             <option value="6">6</option><option value="7">7</option><option value="8">8</option>
             <option value="9">9</option><option value="10">10</option><option value="11">11</option>
             <option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="repeatCount">每個詞語重複次數（1–5 次）：</label>
+          <select id="repeatCount" class="no-shrink">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
           </select>
         </div>
         <div class="row">
@@ -151,6 +161,7 @@
     const countdown = document.getElementById('countdown');
     const repeatGap = document.getElementById('repeatGap');
     const wordGap = document.getElementById('wordGap');
+    const repeatCount = document.getElementById('repeatCount');
     const rateSelect = document.getElementById('rateSelect');
     const langMode = document.getElementById('langMode');
     const startBtn = document.getElementById('startBtn');
@@ -163,7 +174,7 @@
     const testEnBtn = document.getElementById('testEn');
     const gridWords = document.getElementById('gridWords');
 
-    const SETTINGS_KEY = 'cute_dictation_settings_v3';
+    const SETTINGS_KEY = 'cute_dictation_settings_v4';
 
     function updatePreview(){
       const list = parseWords(wordInput.value);
@@ -245,7 +256,7 @@
         }
         if (saved.voiceEnIndex != null && voices[saved.voiceEnIndex]) {
           const eOpt = Array.from(voiceEnSel.options).find(o => (o.value|0) === saved.voiceEnIndex);
-          if (eOpt) eOpt.selected = true;
+          if (eOpt) yOpt && (eOpt.selected = true);
         }
       }
     }
@@ -297,7 +308,7 @@
         const b = document.createElement('button');
         b.className = 'chipWord';
         b.textContent = w;
-        b.title = '點我：立即重播此詞語三次';
+        b.title = '點我：立即重播此詞語（依設定重複次數）';
         b.addEventListener('click', ()=>{
           priorityQueue.push(w);
           statusEl.textContent = '已加入重播：'+w;
@@ -307,13 +318,14 @@
     }
 
     async function processPriorityIfAny(rGapMs){
+      const repeatN = Math.min(5, Math.max(1, parseInt(repeatCount.value,10) || 3));
       while(priorityQueue.length){
         const w = priorityQueue.shift();
         const mode = langMode.value;
         statusEl.textContent = '快速重播：'+w;
-        for(let r=0;r<3;r++){
+        for(let r=0;r<repeatN;r++){
           await speakOnce(w, mode);
-          if (r<2){ const until = Date.now()+rGapMs; while(Date.now()<until){ await sleep(30);} }
+          if (r<repeatN-1){ const until = Date.now()+rGapMs; while(Date.now()<until){ await sleep(30);} }
         }
       }
     }
@@ -322,7 +334,7 @@
     function setUIRunning(r){
       startBtn.disabled = r; stopBtn.disabled = !r;
       // 允許開始後仍可輸入新詞語
-      countdown.disabled = r; repeatGap.disabled = r; wordGap.disabled = r; rateSelect.disabled = r; langMode.disabled = r;
+      countdown.disabled = r; repeatGap.disabled = r; wordGap.disabled = r; repeatCount.disabled = r; rateSelect.disabled = r; langMode.disabled = r;
       voiceYueSel.disabled = r; voiceEnSel.disabled = r; testYueBtn.disabled = r; testEnBtn.disabled = r;
     }
 
@@ -341,15 +353,16 @@
       const rGap = (parseInt(repeatGap.value,10)||3)*1000;
       const wGap = (parseInt(wordGap.value,10)||3)*1000;
       const mode = langMode.value;
+      const repeatN = Math.min(5, Math.max(1, parseInt(repeatCount.value,10) || 3));
 
       for(let i=0; ; i++){
         const list = parseWords(wordInput.value);
         if (i >= list.length) break;
         if (stopFlag) break; const w = list[i];
         statusEl.textContent = '朗讀：'+w+'  ('+(i+1)+'/'+list.length+')';
-        for(let r=0;r<3;r++){
+        for(let r=0;r<repeatN;r++){
           if (stopFlag) break; await speakOnce(w, mode);
-          if (r<2){ const until = Date.now()+rGap; while(Date.now()<until){ if(stopFlag) break; await processPriorityIfAny(120); await sleep(30); } }
+          if (r<repeatN-1){ const until = Date.now()+rGap; while(Date.now()<until){ if(stopFlag) break; await processPriorityIfAny(120); await sleep(30); } }
         }
         if (stopFlag) break;
         if (i<list.length-1){ statusEl.textContent='間隔中… ('+Math.round(wGap/1000)+'s)'; const untilW=Date.now()+wGap; while(Date.now()<untilW){ if(stopFlag) break; await processPriorityIfAny(120); await sleep(30);} }
@@ -371,6 +384,7 @@
         countdown: countdown.value,
         repeatGap: repeatGap.value,
         wordGap: wordGap.value,
+        repeatCount: repeatCount.value,
         rate: rateSelect.value,
         langMode: langMode.value,
         words: wordInput.value,
@@ -386,6 +400,7 @@
         countdown.value = data.countdown || countdown.value;
         repeatGap.value = data.repeatGap || repeatGap.value;
         wordGap.value = data.wordGap || wordGap.value;
+        repeatCount.value = data.repeatCount || repeatCount.value;
         rateSelect.value = data.rate || rateSelect.value;
         langMode.value = data.langMode || langMode.value;
         wordInput.value = data.words || wordInput.value; updatePreview();
@@ -393,7 +408,7 @@
       }catch(e){ return null; }
     }
 
-    [countdown, repeatGap, wordGap, rateSelect, langMode, wordInput, voiceYueSel, voiceEnSel].forEach(el=>{
+    [countdown, repeatGap, wordGap, repeatCount, rateSelect, langMode, wordInput, voiceYueSel, voiceEnSel].forEach(el=>{
       el.addEventListener('change', saveSettings);
       el.addEventListener('input', saveSettings);
     });
@@ -406,6 +421,7 @@
     // --- Minimal console tests (do not affect UI) ---
     (function(){
       try {
+        // Test whitelist
         const mockVoices = [
           { name:'Random Voice', lang:'en-GB' },
           { name:'Google UK English', lang:'en-GB' },
@@ -416,6 +432,11 @@
         const whitelistEn = [/google (us|uk) english/i,/microsoft aria.*english/i,/microsoft sonia.*english/i,/samantha/i,/karen/i];
         const whitelisted = mockVoices.filter(v => /^en/i.test(v.lang) && whitelistEn.some(rx => rx.test((v.name + ' ' + v.lang))));
         console.assert(whitelisted.length === 4, '[TEST] whitelistEn 應該只保留 4 個英語聲線');
+
+        // Test repeat count bounds
+        const testVals = [0,1,3,5,9];
+        const clamped = testVals.map(v=> Math.min(5, Math.max(1, v)));
+        console.assert(JSON.stringify(clamped) === JSON.stringify([1,1,3,5,5]), '[TEST] repeat count 應在 1~5 之間');
       } catch (e) { console.error('[TEST] Error running tests:', e); }
     })();
   </script>
