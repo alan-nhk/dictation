@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Dictation 251203</title>
+  <title>Dictation Helper 默書幫手</title>
   <style>
-    /* 固定 px，確保手機/桌面一致 */
     html, body { font-size: 18px; line-height: 1.5; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang HK", "PingFang TC", "Microsoft JhengHei", sans-serif; background: linear-gradient(135deg,#fdf2ff,#e6f7ff); }
     .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
 
-    /* 可愛卡片風格 */
     .card { background: #fff; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); padding: 16px; margin: 12px 0; }
     .header { display:flex; align-items:center; gap:12px; }
     .title { font-size: 26px; font-weight: 800; }
@@ -26,7 +24,7 @@
     .btn.smol { min-width: 90px; padding: 10px 14px; font-size: 16px; }
 
     label { font-weight: 700; }
-    select, input[type="number"] { font-size:18px; padding:10px 12px; border-radius:10px; border:2px solid #e9f0ff; background:#f7fbff; }
+    select { font-size:18px; padding:10px 12px; border-radius:10px; border:2px solid #e9f0ff; background:#f7fbff; }
     .no-shrink { flex-shrink:0; }
 
     .section-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
@@ -48,13 +46,13 @@
     <div class="card">
       <div class="header">
         <div style="font-size:30px">🎈🐣✨</div>
-        <div class="title">Dictation 251202</div>
-        <span class="chip">中英皆可 · 粵語朗讀 ×3（可自選次數）</span>
+        <div class="title">Dictation Helper 默書幫手</div>
+        <span class="chip">中英皆可 · 快速插播 · 可暫停</span>
       </div>
       <div class="row" style="margin-top:6px">
         <div class="muted">輸入中文或英文詞語（逗號或每行一個）</div>
       </div>
-      <textarea id="wordInput" placeholder="例：\n尋寶\n超級市場\napple, banana, orange"></textarea>
+      <textarea id="wordInput" placeholder="例：&#10;尋寶&#10;超級市場&#10;apple, banana, orange"></textarea>
 
       <div class="hr"></div>
       <div class="section-title">⏱️ 設定</div>
@@ -69,20 +67,19 @@
           </select>
         </div>
         <div class="row">
-          <label for="repeatGap">同一詞語的朗讀間隔（3–10 秒）：</label>
+          <label for="repeatGap">同一詞語的朗讀間隔（1–10 秒）：</label>
           <select id="repeatGap" class="no-shrink">
-            <option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
-            <option value="6">6</option><option value="7">7</option><option value="8">8</option>
-            <option value="9">9</option><option value="10">10</option>
+            <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
           </select>
         </div>
         <div class="row">
-          <label for="wordGap">詞語之間的間隔（3–15 秒）：</label>
+          <label for="wordGap">詞語之間的間隔（1–10 秒）：</label>
           <select id="wordGap" class="no-shrink">
-            <option value="3" selected>3</option><option value="4">4</option><option value="5">5</option>
-            <option value="6">6</option><option value="7">7</option><option value="8">8</option>
-            <option value="9">9</option><option value="10">10</option><option value="11">11</option>
-            <option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option>
+            <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
           </select>
         </div>
         <div class="row">
@@ -143,6 +140,7 @@
       <div class="hr"></div>
       <div class="row">
         <button id="startBtn" class="btn no-shrink">🟣 開始</button>
+        <button id="pauseBtn" class="btn secondary no-shrink" disabled>⏸️ 暫停</button>
         <button id="stopBtn" class="btn warn no-shrink" disabled>🛑 停止</button>
         <button id="resetBtn" class="btn secondary no-shrink">♻️ 重設</button>
         <span id="status" class="status">待命</span>
@@ -166,6 +164,7 @@
     const rateSelect = document.getElementById('rateSelect');
     const langMode = document.getElementById('langMode');
     const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
     const stopBtn = document.getElementById('stopBtn');
     const statusEl = document.getElementById('status');
     const preview = document.getElementById('preview');
@@ -176,11 +175,13 @@
     const gridWords = document.getElementById('gridWords');
     const resetBtn = document.getElementById('resetBtn');
 
-    // --- Global runtime state for interruptible playback ---
-    let interruptFlag = false;           // set true when user triggers quick-replay
-    let isRunning = false;               // main run loop state
-    let currentWordIndex = -1;           // index of word currently being read
-    let currentRepeat = 0;               // repeat counter for current word
+    // Global states
+    let interruptFlag = false;
+    let isRunning = false;
+    let paused = false;
+    let currentWordIndex = -1;
+    let currentRepeat = 0;
+    let stopFlag = false;
 
     const SETTINGS_KEY = 'cute_dictation_settings_v4';
 
@@ -191,46 +192,40 @@
     }
     wordInput.addEventListener('input', ()=>{ updatePreview(); saveSettings(); });
 
-    // --- Voice preferences (DECLARE BEFORE USE) ---
+    // Voice preferences
     const preferEnOrder = [
       /microsoft aria.*english \(united states\)/i,
       /microsoft sonia.*english \(great britain\)/i,
       /google uk english/i,
       /google us english/i,
-      /samantha/i, // iOS en-US
-      /karen/i     // iOS en-AU
+      /samantha/i, /karen/i
     ];
     const whitelistEn = [
       /google (us|uk) english/i,
       /microsoft aria.*english/i,
       /microsoft sonia.*english/i,
-      /samantha/i,
-      /karen/i
+      /samantha/i, /karen/i
     ];
 
-    // --- SpeechSynthesis voices ---
     let voices = [];
-
-    function bestEnglish(voices){
-      const list = voices.filter(v => /^en/i.test(v.lang) && whitelistEn.some(rx => rx.test((v.name + ' ' + v.lang))));
+    function bestEnglish(vs){
+      const list = vs.filter(v => /^en/i.test(v.lang) && whitelistEn.some(rx => rx.test((v.name + ' ' + v.lang))));
       for(const rule of preferEnOrder){
         const hit = list.find(v => rule.test((v.name + ' ' + v.lang)));
         if(hit) return hit;
       }
       return list[0] || null;
     }
-
-    function bestCantonese(voices){
-      const yue = voices.filter(v => /yue|zh[-_]?HK|cantonese|粵/.test((v.lang + ' ' + v.name).toLowerCase()));
+    function bestCantonese(vs){
+      const yue = vs.filter(v => /yue|zh[-_]?hk|cantonese|粵/.test((v.lang + ' ' + v.name).toLowerCase()));
       if (yue[0]) return yue[0];
-      const zh = voices.filter(v => /zh[-_](hk|tw|mo)|hant/i.test(v.lang));
+      const zh = vs.filter(v => /zh[-_](hk|tw|mo)|hant/i.test(v.lang));
       return zh[0] || null;
     }
 
     function renderVoiceOptions(){
       voiceYueSel.innerHTML = '';
       voiceEnSel.innerHTML = '';
-
       let enCount = 0;
       voices.forEach((v, idx)=>{
         const opt = document.createElement('option');
@@ -244,16 +239,12 @@
           enCount++;
         }
       });
-
-      // If no whitelisted English voices, add a system default option to avoid silence
       if (enCount === 0){
         const def = document.createElement('option');
         def.value = '-1';
         def.textContent = '系統預設英語 (fallback)';
         voiceEnSel.appendChild(def);
       }
-
-      // defaults
       const bYue = bestCantonese(voices);
       const bEn  = bestEnglish(voices);
       if (bYue){
@@ -264,17 +255,15 @@
         const eOpt = Array.from(voiceEnSel.options).find(o=>voices[o.value|0]===bEn);
         if (eOpt) eOpt.selected = true;
       }
-
-      // restore saved indices
       const saved = loadSettings();
       if (saved) {
         if (saved.voiceYueIndex != null && voices[saved.voiceYueIndex]) {
-          const yOpt = Array.from(voiceYueSel.options).find(o => (o.value|0) === saved.voiceYueIndex);
-          if (yOpt) yOpt.selected = true;
+          const yOpt2 = Array.from(voiceYueSel.options).find(o => (o.value|0) === saved.voiceYueIndex);
+          if (yOpt2) yOpt2.selected = true;
         }
         if (saved.voiceEnIndex != null) {
-          const eOpt = Array.from(voiceEnSel.options).find(o => (o.value|0) === (saved.voiceEnIndex|0));
-          if (eOpt) eOpt.selected = true;
+          const eOpt2 = Array.from(voiceEnSel.options).find(o => (o.value|0) === (saved.voiceEnIndex|0));
+          if (eOpt2) eOpt2.selected = true;
         }
       }
     }
@@ -288,11 +277,7 @@
       }
       return list;
     }
-
-    async function loadVoices(){
-      voices = await ensureVoices();
-      renderVoiceOptions();
-    }
+    async function loadVoices(){ voices = await ensureVoices(); renderVoiceOptions(); }
     window.speechSynthesis.onvoiceschanged = loadVoices;
 
     function speakOnce(text, mode){
@@ -306,36 +291,22 @@
         const rate = parseFloat(rateSelect.value) || 1.0;
         u.volume = 1.0; u.rate = rate; u.pitch = 1.0;
 
-        const pickEn = ()=>{
-          if (voiceEnSel.value === '-1') return null; // fallback to system default
-          const idx = voiceEnSel.value|0; return voices[idx] || bestEnglish(voices);
-        };
+        const pickEn = ()=>{ if (voiceEnSel.value === '-1') return null; const idx = voiceEnSel.value|0; return voices[idx] || bestEnglish(voices); };
         const pickYue = ()=>{ const idx = voiceYueSel.value|0; return voices[idx] || bestCantonese(voices); };
 
-        if (mode === 'yue') {
-          voice = pickYue(); u.lang = (voice && voice.lang) || 'zh-HK';
-        } else if (mode === 'en') {
-          voice = pickEn(); u.lang = (voice && voice.lang) || 'en-US';
-        } else {
-          if (isCJK(text)) { voice = pickYue(); u.lang = (voice && voice.lang) || 'zh-HK'; }
-          else { voice = pickEn(); u.lang = (voice && voice.lang) || 'en-US'; }
-        }
+        if (mode === 'yue') { voice = pickYue(); u.lang = (voice && voice.lang) || 'zh-HK'; }
+        else if (mode === 'en') { voice = pickEn(); u.lang = (voice && voice.lang) || 'en-US'; }
+        else { if (isCJK(text)) { voice = pickYue(); u.lang = (voice && voice.lang) || 'zh-HK'; } else { voice = pickEn(); u.lang = (voice && voice.lang) || 'en-US'; } }
         if (voice) u.voice = voice;
         u.onend = resolve;
         window.speechSynthesis.speak(u);
       });
     }
 
-    testYueBtn.addEventListener('click', ()=>{
-      const text = '你好，測試粵語發音。';
-      speakOnce(text, 'yue');
-    });
-    testEnBtn.addEventListener('click', ()=>{
-      const text = 'Hello! This is a natural English voice test.';
-      speakOnce(text, 'en');
-    });
+    testYueBtn.addEventListener('click', ()=>{ speakOnce('你好，測試粵語發音。', 'yue'); });
+    testEnBtn.addEventListener('click', ()=>{ speakOnce('Hello! This is a natural English voice test.', 'en'); });
 
-    // --- 快速重播邏輯 ---
+    // 快速重播：點即打斷 + 插播；播完後回到被打斷詞語由頭讀
     const priorityQueue = [];
     function renderGrid(list){
       gridWords.innerHTML = '';
@@ -345,8 +316,7 @@
         b.textContent = w;
         b.title = '點我：立即重播此詞語（依設定重複次數）';
         b.addEventListener('click', ()=>{
-          // Highest priority: put to front and interrupt immediately
-          priorityQueue.unshift(w);
+          priorityQueue.unshift(w);      // 後來者優先
           interruptFlag = true;
           try{ speechSynthesis.cancel(); }catch(e){}
           statusEl.textContent = '打斷並插播：'+w;
@@ -356,7 +326,6 @@
     }
 
     async function processPriorityNow(){
-      // Drain priority queue immediately using same repeat/rGap settings
       const repeatN = Math.min(5, Math.max(1, parseInt(repeatCount.value,10) || 3));
       const rGap = (parseInt(repeatGap.value,10) || 3) * 1000;
       const mode = langMode.value;
@@ -367,22 +336,28 @@
           await speakOnce(w, mode);
           if (r < repeatN - 1){
             const until = Date.now() + rGap;
-            while(Date.now() < until){ await sleep(30); if (interruptFlag) break; }
+            while(Date.now() < until){ if (paused){ await sleep(120); continue; } await sleep(30); if (interruptFlag) break; }
           }
         }
       }
-      interruptFlag = false; // reset switch after draining
+      interruptFlag = false;
     }
 
-    // --- Run logic ---
     function setUIRunning(r){
-      startBtn.disabled = r; stopBtn.disabled = !r;
-      // 允許開始後仍可輸入新詞語；重設按鈕保持可用
+      startBtn.disabled = r; stopBtn.disabled = !r; pauseBtn.disabled = !r;
+      if (!r){ paused = false; pauseBtn.textContent = '⏸️ 暫停'; }
       countdown.disabled = r; repeatGap.disabled = r; wordGap.disabled = r; repeatCount.disabled = r; rateSelect.disabled = r; langMode.disabled = r;
       voiceYueSel.disabled = r; voiceEnSel.disabled = r; testYueBtn.disabled = r; testEnBtn.disabled = r;
     }
 
-    let stopFlag = false;
+    async function waitWithPause(ms){
+      const end = Date.now() + ms;
+      while(Date.now() < end){
+        if (stopFlag) return;
+        if (paused){ await sleep(120); continue; }
+        await sleep(30);
+      }
+    }
 
     async function run(){
       const initialList = parseWords(wordInput.value);
@@ -391,7 +366,7 @@
       stopFlag = false; isRunning = true; setUIRunning(true);
 
       let cd = parseInt(countdown.value,10)||0;
-      for(let t=cd; t>0; t--){ if (stopFlag) break; statusEl.textContent = '倒數：'+t; await sleep(1000); }
+      for(let t=cd; t>0; t--){ if (stopFlag) break; statusEl.textContent = '倒數：'+t; await waitWithPause(1000); }
       if (stopFlag){ statusEl.textContent='已停止'; isRunning=false; setUIRunning(false); return; }
       statusEl.textContent='開始';
 
@@ -411,43 +386,41 @@
         currentRepeat = 0;
         while(currentRepeat < repeatN){
           if (stopFlag) break;
-          if (interruptFlag){
-            await processPriorityNow();
-            currentRepeat = 0; // 方案A：插播後，從頭重播被打斷的詞語
-          }
+          if (interruptFlag){ await processPriorityNow(); currentRepeat = 0; }
           await speakOnce(w, mode);
-          if (interruptFlag){
-            await processPriorityNow();
-            currentRepeat = 0; // 方案A：重新開始該詞重複計數
-            continue;
-          }
+          if (interruptFlag){ await processPriorityNow(); currentRepeat = 0; continue; }
           if (++currentRepeat < repeatN){
             const until = Date.now()+rGap;
-            while(Date.now()<until){ if (stopFlag) break; if (interruptFlag) break; await sleep(30); }
+            while(Date.now()<until){ if (stopFlag) break; if (interruptFlag) break; if (paused){ await sleep(120); continue; } await sleep(30); }
           }
         }
         if (stopFlag) break;
 
-        // word gap
         if (i<list.length-1){
           statusEl.textContent='間隔中… ('+Math.round(wGap/1000)+'s)';
           const untilW=Date.now()+wGap;
-          while(Date.now()<untilW){ if (stopFlag) break; if (interruptFlag){ await processPriorityNow(); } await sleep(30);} 
+          while(Date.now()<untilW){ if (stopFlag) break; if (interruptFlag){ await processPriorityNow(); } if (paused){ await sleep(120); continue; } await sleep(30);}
         }
       }
 
-      // Drain any remaining priority
       if (!stopFlag){ await processPriorityNow(); }
-
       if(!stopFlag) statusEl.textContent='完成';
       isRunning=false; setUIRunning(false);
     }
 
+    // Buttons
     startBtn.addEventListener('click', run);
-    resetBtn.addEventListener('click', ()=> resetAll(false));
+    pauseBtn.addEventListener('click', ()=>{
+      if (!isRunning) return;
+      paused = !paused;
+      try{ paused ? speechSynthesis.pause() : speechSynthesis.resume(); }catch(e){}
+      pauseBtn.textContent = paused ? '▶️ 繼續' : '⏸️ 暫停';
+      statusEl.textContent = paused ? '已暫停' : '繼續';
+    });
     stopBtn.addEventListener('click', ()=>{ stopFlag = true; try{ speechSynthesis.cancel(); }catch(e){} statusEl.textContent='已停止'; setUIRunning(false); });
+    resetBtn.addEventListener('click', ()=> resetAll(false));
 
-    // --- Reset all (清除所有記憶) ---
+    // Reset all
     function resetAll(force){
       if (!force){
         const ok = confirm('確定要重設？將會清除所有設定與詞語。');
@@ -455,25 +428,18 @@
       }
       try{ speechSynthesis.cancel(); }catch(e){}
       stopFlag = true; isRunning = false; setUIRunning(false);
-      // 只清除本網站 key（比較安全）
       try{ localStorage.removeItem(SETTINGS_KEY); }catch(e){}
-      // 邏輯狀態
       priorityQueue.length = 0; interruptFlag = false; currentWordIndex = -1; currentRepeat = 0;
-      // 還原預設值
       wordInput.value = '';
-      countdown.value = '3';
-      repeatGap.value = '3';
-      wordGap.value = '3';
-      repeatCount.value = '3';
-      rateSelect.value = '1.0';
-      langMode.value = 'auto';
+      countdown.value = '3'; repeatGap.value = '3'; wordGap.value = '3'; repeatCount.value = '3';
+      rateSelect.value = '1.0'; langMode.value = 'auto';
       if (voiceYueSel.options.length) voiceYueSel.selectedIndex = 0;
       if (voiceEnSel.options.length) voiceEnSel.selectedIndex = 0;
       updatePreview();
       statusEl.textContent = '已重設';
     }
 
-    // --- Save/Load settings ---
+    // Save/Load
     function saveSettings(){
       const data = {
         countdown: countdown.value,
@@ -502,19 +468,17 @@
         return data;
       }catch(e){ return null; }
     }
-
     [countdown, repeatGap, wordGap, repeatCount, rateSelect, langMode, wordInput, voiceYueSel, voiceEnSel].forEach(el=>{
       el.addEventListener('change', saveSettings);
       el.addEventListener('input', saveSettings);
     });
 
-    // Initial load
+    // Initial
     (async ()=>{ await loadVoices(); loadSettings(); updatePreview(); })();
 
-    // --- Minimal console tests (do not affect UI) ---
+    // Minimal console tests
     (function(){
       try {
-        // Test whitelist
         const mockVoices = [
           { name:'Random Voice', lang:'en-GB' },
           { name:'Google UK English', lang:'en-GB' },
@@ -526,22 +490,17 @@
         const whitelisted = mockVoices.filter(v => /^en/i.test(v.lang) && whitelistEn.some(rx => rx.test((v.name + ' ' + v.lang))));
         console.assert(whitelisted.length === 4, '[TEST] whitelistEn 應該只保留 4 個英語聲線');
 
-        // Test repeat count bounds
         const testVals = [0,1,3,5,9];
         const clamped = testVals.map(v=> Math.min(5, Math.max(1, v)));
         console.assert(JSON.stringify(clamped) === JSON.stringify([1,1,3,5,5]), '[TEST] repeat count 應在 1~5 之間');
 
-        // Test parseWords splitting — escape newline and tab to avoid syntax error
         const parsed = parseWords('a,b\\n c；d;\\t e , , f');
         console.assert(JSON.stringify(parsed) === JSON.stringify(['a','b','c','d','e','f']), '[TEST] parseWords 需正確分割與過濾');
 
-        // New tests: interrupt handler contracts
         console.assert(typeof processPriorityNow === 'function', '[TEST] processPriorityNow 應存在');
         console.assert(typeof resetAll === 'function', '[TEST] resetAll 應存在');
-        // Simulate queue order: unshift should make LIFO behavior for latest click first
-        const tmpQ = [];
-        tmpQ.unshift('A'); tmpQ.unshift('B');
-        console.assert(JSON.stringify(tmpQ) === JSON.stringify(['B','A']), '[TEST] 快速重播應該後來者優先 (LIFO)');
+        const tmpQ = []; tmpQ.unshift('A'); tmpQ.unshift('B');
+        console.assert(JSON.stringify(tmpQ) === JSON.stringify(['B','A']), '[TEST] 快速重播應後來者優先 (LIFO)');
       } catch (e) { console.error('[TEST] Error running tests:', e); }
     })();
   </script>
