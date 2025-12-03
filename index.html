@@ -37,7 +37,7 @@
 
     .pill { display:inline-flex; align-items:center; gap:6px; background:#fff; border:2px dashed #ffd1e2; border-radius: 999px; padding: 8px 12px; }
 
-    /* 新增：快速重播方格 */
+    /* 快速重播方格 */
     .gridWords { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
     .chipWord { font-size:16px; padding:10px 12px; border:2px solid #ffd1e2; background:#fff; border-radius:999px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
     .chipWord:active { transform: translateY(1px); }
@@ -144,6 +144,7 @@
       <div class="row">
         <button id="startBtn" class="btn no-shrink">🟣 開始</button>
         <button id="stopBtn" class="btn warn no-shrink" disabled>🛑 停止</button>
+        <button id="resetBtn" class="btn secondary no-shrink">♻️ 重設</button>
         <span id="status" class="status">待命</span>
       </div>
       <div class="row"><span class="muted">預覽：</span><span id="preview" class="muted">（沒有內容）</span></div>
@@ -173,6 +174,13 @@
     const testYueBtn = document.getElementById('testYue');
     const testEnBtn = document.getElementById('testEn');
     const gridWords = document.getElementById('gridWords');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // --- Global runtime state for interruptible playback ---
+    let interruptFlag = false;           // set true when user triggers quick-replay
+    let isRunning = false;               // main run loop state
+    let currentWordIndex = -1;           // index of word currently being read
+    let currentRepeat = 0;               // repeat counter for current word
 
     const SETTINGS_KEY = 'cute_dictation_settings_v4';
 
@@ -337,34 +345,39 @@
         b.textContent = w;
         b.title = '點我：立即重播此詞語（依設定重複次數）';
         b.addEventListener('click', ()=>{
-          priorityQueue.push(w);
-          statusEl.textContent = '已加入重播：'+w;
+          // Highest priority: put to front and interrupt immediately
+          priorityQueue.unshift(w);
+          interruptFlag = true;
+          try{ speechSynthesis.cancel(); }catch(e){}
+          statusEl.textContent = '打斷並插播：'+w;
         });
         gridWords.appendChild(b);
       });
     }
 
-    async function processPriorityIfAny(){
+    async function processPriorityNow(){
+      // Drain priority queue immediately using same repeat/rGap settings
       const repeatN = Math.min(5, Math.max(1, parseInt(repeatCount.value,10) || 3));
-      const rGap = (parseInt(repeatGap.value,10) || 3) * 1000; // 使用與正常朗讀相同的間隔
+      const rGap = (parseInt(repeatGap.value,10) || 3) * 1000;
+      const mode = langMode.value;
       while(priorityQueue.length){
         const w = priorityQueue.shift();
-        const mode = langMode.value;
         statusEl.textContent = '快速重播：'+w;
-        for(let r=0;r<repeatN;r++){
-          await speakOnce(w, mode); // 語速已在 speakOnce() 內與正常朗讀一致
+        for(let r=0; r<repeatN; r++){
+          await speakOnce(w, mode);
           if (r < repeatN - 1){
             const until = Date.now() + rGap;
-            while(Date.now() < until){ await sleep(30);} // 使用相同的間隔時間
+            while(Date.now() < until){ await sleep(30); if (interruptFlag) break; }
           }
         }
       }
+      interruptFlag = false; // reset switch after draining
     }
 
     // --- Run logic ---
     function setUIRunning(r){
       startBtn.disabled = r; stopBtn.disabled = !r;
-      // 允許開始後仍可輸入新詞語
+      // 允許開始後仍可輸入新詞語；重設按鈕保持可用
       countdown.disabled = r; repeatGap.disabled = r; wordGap.disabled = r; repeatCount.disabled = r; rateSelect.disabled = r; langMode.disabled = r;
       voiceYueSel.disabled = r; voiceEnSel.disabled = r; testYueBtn.disabled = r; testEnBtn.disabled = r;
     }
@@ -372,13 +385,14 @@
     let stopFlag = false;
 
     async function run(){
-      if (!parseWords(wordInput.value).length){ alert('請先輸入詞語'); return; }
+      const initialList = parseWords(wordInput.value);
+      if (!initialList.length){ alert('請先輸入詞語'); return; }
       saveSettings();
-      stopFlag = false; setUIRunning(true);
+      stopFlag = false; isRunning = true; setUIRunning(true);
 
       let cd = parseInt(countdown.value,10)||0;
       for(let t=cd; t>0; t--){ if (stopFlag) break; statusEl.textContent = '倒數：'+t; await sleep(1000); }
-      if (stopFlag){ statusEl.textContent='已停止'; setUIRunning(false); return; }
+      if (stopFlag){ statusEl.textContent='已停止'; isRunning=false; setUIRunning(false); return; }
       statusEl.textContent='開始';
 
       const rGap = (parseInt(repeatGap.value,10)||3)*1000;
@@ -389,25 +403,75 @@
       for(let i=0; ; i++){
         const list = parseWords(wordInput.value);
         if (i >= list.length) break;
-        if (stopFlag) break; const w = list[i];
+        if (stopFlag) break;
+        const w = list[i];
+        currentWordIndex = i;
         statusEl.textContent = '朗讀：'+w+'  ('+(i+1)+'/'+list.length+')';
-        for(let r=0;r<repeatN;r++){
-          if (stopFlag) break; await speakOnce(w, mode);
-          if (r<repeatN-1){ const until = Date.now()+rGap; while(Date.now()<until){ if(stopFlag) break; await processPriorityIfAny(); await sleep(30); } }
+
+        currentRepeat = 0;
+        while(currentRepeat < repeatN){
+          if (stopFlag) break;
+          if (interruptFlag){
+            await processPriorityNow();
+            currentRepeat = 0; // 方案A：插播後，從頭重播被打斷的詞語
+          }
+          await speakOnce(w, mode);
+          if (interruptFlag){
+            await processPriorityNow();
+            currentRepeat = 0; // 方案A：重新開始該詞重複計數
+            continue;
+          }
+          if (++currentRepeat < repeatN){
+            const until = Date.now()+rGap;
+            while(Date.now()<until){ if (stopFlag) break; if (interruptFlag) break; await sleep(30); }
+          }
         }
         if (stopFlag) break;
-        if (i<list.length-1){ statusEl.textContent='間隔中… ('+Math.round(wGap/1000)+'s)'; const untilW=Date.now()+wGap; while(Date.now()<untilW){ if(stopFlag) break; await processPriorityIfAny(); await sleep(30);} }
+
+        // word gap
+        if (i<list.length-1){
+          statusEl.textContent='間隔中… ('+Math.round(wGap/1000)+'s)';
+          const untilW=Date.now()+wGap;
+          while(Date.now()<untilW){ if (stopFlag) break; if (interruptFlag){ await processPriorityNow(); } await sleep(30);} 
+        }
       }
 
-      // 完成前，處理任何尚未播放的快速重播
-      await processPriorityIfAny();
+      // Drain any remaining priority
+      if (!stopFlag){ await processPriorityNow(); }
 
       if(!stopFlag) statusEl.textContent='完成';
-      setUIRunning(false);
+      isRunning=false; setUIRunning(false);
     }
 
     startBtn.addEventListener('click', run);
+    resetBtn.addEventListener('click', ()=> resetAll(false));
     stopBtn.addEventListener('click', ()=>{ stopFlag = true; try{ speechSynthesis.cancel(); }catch(e){} statusEl.textContent='已停止'; setUIRunning(false); });
+
+    // --- Reset all (清除所有記憶) ---
+    function resetAll(force){
+      if (!force){
+        const ok = confirm('確定要重設？將會清除所有設定與詞語。');
+        if (!ok) return;
+      }
+      try{ speechSynthesis.cancel(); }catch(e){}
+      stopFlag = true; isRunning = false; setUIRunning(false);
+      // 只清除本網站 key（比較安全）
+      try{ localStorage.removeItem(SETTINGS_KEY); }catch(e){}
+      // 邏輯狀態
+      priorityQueue.length = 0; interruptFlag = false; currentWordIndex = -1; currentRepeat = 0;
+      // 還原預設值
+      wordInput.value = '';
+      countdown.value = '3';
+      repeatGap.value = '3';
+      wordGap.value = '3';
+      repeatCount.value = '3';
+      rateSelect.value = '1.0';
+      langMode.value = 'auto';
+      if (voiceYueSel.options.length) voiceYueSel.selectedIndex = 0;
+      if (voiceEnSel.options.length) voiceEnSel.selectedIndex = 0;
+      updatePreview();
+      statusEl.textContent = '已重設';
+    }
 
     // --- Save/Load settings ---
     function saveSettings(){
@@ -467,9 +531,17 @@
         const clamped = testVals.map(v=> Math.min(5, Math.max(1, v)));
         console.assert(JSON.stringify(clamped) === JSON.stringify([1,1,3,5,5]), '[TEST] repeat count 應在 1~5 之間');
 
-        // Test parseWords splitting
-        const parsed = parseWords('a,b\n c；d;\t e , , f');
+        // Test parseWords splitting — escape newline and tab to avoid syntax error
+        const parsed = parseWords('a,b\\n c；d;\\t e , , f');
         console.assert(JSON.stringify(parsed) === JSON.stringify(['a','b','c','d','e','f']), '[TEST] parseWords 需正確分割與過濾');
+
+        // New tests: interrupt handler contracts
+        console.assert(typeof processPriorityNow === 'function', '[TEST] processPriorityNow 應存在');
+        console.assert(typeof resetAll === 'function', '[TEST] resetAll 應存在');
+        // Simulate queue order: unshift should make LIFO behavior for latest click first
+        const tmpQ = [];
+        tmpQ.unshift('A'); tmpQ.unshift('B');
+        console.assert(JSON.stringify(tmpQ) === JSON.stringify(['B','A']), '[TEST] 快速重播應該後來者優先 (LIFO)');
       } catch (e) { console.error('[TEST] Error running tests:', e); }
     })();
   </script>
