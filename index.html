@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Dictation Helper 默書幫手</title>
   <style>
+    /* 固定 px，確保手機/桌面一致 */
     html, body { font-size: 18px; line-height: 1.5; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang HK", "PingFang TC", "Microsoft JhengHei", sans-serif; background: linear-gradient(135deg,#fdf2ff,#e6f7ff); }
     .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
 
+    /* 可愛卡片風格 */
     .card { background: #fff; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); padding: 16px; margin: 12px 0; }
     .header { display:flex; align-items:center; gap:12px; }
     .title { font-size: 26px; font-weight: 800; }
@@ -184,6 +186,22 @@
     let stopFlag = false;
 
     const SETTINGS_KEY = 'cute_dictation_settings_v4';
+
+    // --- Screen Wake Lock (auto) ---
+    let wakeLock = null; // ✅ 宣告一次，避免重複宣告錯誤
+    async function requestWakeLock(){
+      if (!('wakeLock' in navigator)) return; // silently skip if unsupported
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', ()=>{ /* released by OS or tab hidden */ });
+      } catch(e){ /* ignore */ }
+    }
+    async function releaseWakeLock(){
+      try{ if (wakeLock){ await wakeLock.release(); wakeLock = null; } }catch(e){}
+    }
+    document.addEventListener('visibilitychange', async ()=>{
+      if (document.visibilityState === 'visible' && isRunning && !wakeLock){ await requestWakeLock(); }
+    });
 
     function updatePreview(){
       const list = parseWords(wordInput.value);
@@ -364,6 +382,7 @@
       if (!initialList.length){ alert('請先輸入詞語'); return; }
       saveSettings();
       stopFlag = false; isRunning = true; setUIRunning(true);
+      await requestWakeLock();
 
       let cd = parseInt(countdown.value,10)||0;
       for(let t=cd; t>0; t--){ if (stopFlag) break; statusEl.textContent = '倒數：'+t; await waitWithPause(1000); }
@@ -399,7 +418,7 @@
         if (i<list.length-1){
           statusEl.textContent='間隔中… ('+Math.round(wGap/1000)+'s)';
           const untilW=Date.now()+wGap;
-          while(Date.now()<untilW){ if (stopFlag) break; if (interruptFlag){ await processPriorityNow(); } if (paused){ await sleep(120); continue; } await sleep(30);}
+          while(Date.now()<untilW){ if (stopFlag) break; if (interruptFlag){ await processPriorityNow(); } if (paused){ await sleep(120); continue; } await sleep(30);} 
         }
       }
 
@@ -417,7 +436,7 @@
       pauseBtn.textContent = paused ? '▶️ 繼續' : '⏸️ 暫停';
       statusEl.textContent = paused ? '已暫停' : '繼續';
     });
-    stopBtn.addEventListener('click', ()=>{ stopFlag = true; try{ speechSynthesis.cancel(); }catch(e){} statusEl.textContent='已停止'; setUIRunning(false); });
+    stopBtn.addEventListener('click', ()=>{ stopFlag = true; try{ speechSynthesis.cancel(); }catch(e){} releaseWakeLock(); statusEl.textContent='已停止'; setUIRunning(false); });
     resetBtn.addEventListener('click', ()=> resetAll(false));
 
     // Reset all
@@ -436,6 +455,7 @@
       if (voiceYueSel.options.length) voiceYueSel.selectedIndex = 0;
       if (voiceEnSel.options.length) voiceEnSel.selectedIndex = 0;
       updatePreview();
+      releaseWakeLock();
       statusEl.textContent = '已重設';
     }
 
@@ -475,6 +495,7 @@
 
     // Initial
     (async ()=>{ await loadVoices(); loadSettings(); updatePreview(); })();
+    window.addEventListener('beforeunload', ()=>{ releaseWakeLock(); });
 
     // Minimal console tests
     (function(){
@@ -501,6 +522,9 @@
         console.assert(typeof resetAll === 'function', '[TEST] resetAll 應存在');
         const tmpQ = []; tmpQ.unshift('A'); tmpQ.unshift('B');
         console.assert(JSON.stringify(tmpQ) === JSON.stringify(['B','A']), '[TEST] 快速重播應後來者優先 (LIFO)');
+
+        // New test: wakeLock singleton helpers are defined
+        console.assert(typeof requestWakeLock === 'function' && typeof releaseWakeLock === 'function', '[TEST] wake lock helpers 應存在');
       } catch (e) { console.error('[TEST] Error running tests:', e); }
     })();
   </script>
