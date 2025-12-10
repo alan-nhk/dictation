@@ -1,0 +1,501 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Pause, RotateCcw, Settings, CheckCircle, Volume2 } from 'lucide-react';
+
+const App = () => {
+    // --- State ---
+    const [textInput, setTextInput] = useState("蘋果\n香蕉\n橙\n士多啤梨");
+    const [words, setWords] = useState([]);
+    
+    // Settings
+    const [startCountdown, setStartCountdown] = useState(3);
+    const [sameWordInterval, setSameWordInterval] = useState(2);
+    const [nextWordInterval, setNextWordInterval] = useState(3);
+    const [repeatCount, setRepeatCount] = useState(2);
+    const [speechRate, setSpeechRate] = useState(1);
+    const [selectedVoice, setSelectedVoice] = useState(null);
+    const [availableVoices, setAvailableVoices] = useState([]);
+
+    // Runtime State
+    const [status, setStatus] = useState("idle"); // idle, countdown, running, paused, finished
+    const [currentWordIndex, setCurrentWordIndex] = useState(0);
+    const [currentRepeat, setCurrentRepeat] = useState(0);
+    const [displayMessage, setDisplayMessage] = useState("");
+    const [countdownValue, setCountdownValue] = useState(0);
+
+    // Refs for controlling the flow without re-renders interrupting logic
+    const abortControllerRef = useRef(null);
+    const stateRef = useRef({
+        status: "idle",
+        wordIndex: 0,
+        repeatIndex: 1
+    });
+
+    // --- Effects ---
+
+    // Load Voices
+    useEffect(() => {
+        const loadVoices = () => {
+            const allVoices = window.speechSynthesis.getVoices();
+            if (allVoices.length === 0) return;
+
+            // Helper to check if voice matches keywords
+            const matches = (voice, keywords) => {
+                const searchStr = (voice.name + voice.lang).toLowerCase();
+                return keywords.some(k => searchStr.includes(k.toLowerCase()));
+            };
+
+            // 1. 粵語 (Cantonese)
+            // 擴大搜尋範圍：檢查 lang 和 name，包含 HK, yue, cantonese, 粵
+            const cantoneseVoices = allVoices.filter(v => matches(v, ['HK', 'yue', 'cantonese', '粵']));
+
+            // 2. 普通話 (Mandarin)
+            // 排除掉已經被歸類為粵語的，檢查 CN, TW, zh, mandarin, putonghua
+            const mandarinVoices = allVoices.filter(v => 
+                matches(v, ['CN', 'TW', 'zh', 'mandarin', 'putonghua']) && 
+                !matches(v, ['HK', 'yue', 'cantonese', '粵'])
+            );
+
+            // 3. 美式英語 (US English)
+            const englishVoices = allVoices.filter(v => matches(v, ['en-US', 'US', 'United States']));
+
+            // 取前 3 個，如果沒有找到特定語音，則不顯示該類別
+            // 如果您的系統只有 1 個粵語語音，這裡就只會顯示 1 個
+            const filteredList = [
+                ...cantoneseVoices.slice(0, 3),
+                ...mandarinVoices.slice(0, 3),
+                ...englishVoices.slice(0, 3)
+            ];
+
+            // 去除重複 (以 name 為準)
+            const uniqueList = Array.from(new Map(filteredList.map(v => [v.name, v])).values());
+
+            // 如果篩選後完全沒語音(極端情況)，則顯示系統前 10 個
+            const finalVoices = uniqueList.length > 0 ? uniqueList : allVoices.slice(0, 10);
+
+            setAvailableVoices(finalVoices);
+            
+            // Auto-select logic
+            // 嘗試保留當前選擇，否則優先選粵語
+            if (finalVoices.length > 0) {
+                const currentExists = finalVoices.find(v => v.name === selectedVoice);
+                if (!currentExists) {
+                    const defaultVoice = cantoneseVoices[0] || mandarinVoices[0] || englishVoices[0] || finalVoices[0];
+                    setSelectedVoice(defaultVoice ? defaultVoice.name : finalVoices[0].name);
+                }
+            }
+        };
+
+        // 部分瀏覽器需要這一行來觸發語音加載
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        
+        // Cleanup on unmount
+        return () => {
+            window.speechSynthesis.cancel();
+            if (abortControllerRef.current) abortControllerRef.current.abort();
+        };
+    }, []);
+
+    // Sync Ref with State
+    useEffect(() => {
+        stateRef.current.status = status;
+    }, [status]);
+
+    // --- Logic Helpers ---
+
+    const wait = (ms, signal) => {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => resolve(), ms);
+            signal.addEventListener('abort', () => {
+                clearTimeout(timer);
+                reject(new Error('Aborted'));
+            });
+        });
+    };
+
+    const speakWord = (text) => {
+        return new Promise((resolve, reject) => {
+            window.speechSynthesis.cancel(); // Cancel previous
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voice = availableVoices.find(v => v.name === selectedVoice);
+            if (voice) utterance.voice = voice;
+            utterance.rate = speechRate;
+
+            utterance.onend = () => resolve();
+            utterance.onerror = (e) => {
+                // If canceled (e.g. paused), it might trigger error or just end
+                resolve(); 
+            };
+            
+            // 解決部分瀏覽器語音被垃圾回收導致中斷的問題
+            window.speechSynthesis.speak(utterance);
+        });
+    };
+
+    // --- Core Logic ---
+
+    const startDictation = async (resume = false) => {
+        // Setup AbortController for this run
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        const signal = controller.signal;
+
+        let wordList = words;
+
+        if (!resume) {
+            // Fresh Start
+            const parsed = textInput.split(/[\n,，]+/).map(w => w.trim()).filter(w => w.length > 0);
+            if (parsed.length === 0) {
+                alert("請輸入默書內容");
+                return;
+            }
+            setWords(parsed);
+            wordList = parsed;
+            
+            setStatus("countdown");
+            setCountdownValue(startCountdown);
+
+            try {
+                // Initial Countdown
+                for (let i = startCountdown; i > 0; i--) {
+                    setCountdownValue(i);
+                    await wait(1000, signal);
+                }
+            } catch (err) { return; } // Stopped/Paused
+
+            // Init State
+            stateRef.current.wordIndex = 0;
+            stateRef.current.repeatIndex = 1;
+        }
+
+        setStatus("running");
+
+        try {
+            // Main Loop
+            while (stateRef.current.wordIndex < wordList.length) {
+                const wIdx = stateRef.current.wordIndex;
+                const rIdx = stateRef.current.repeatIndex;
+
+                setCurrentWordIndex(wIdx);
+                setCurrentRepeat(rIdx);
+                
+                // Speak
+                setDisplayMessage(`正在朗讀: ${wordList[wIdx]}`);
+                await speakWord(wordList[wIdx]);
+                
+                // If paused right after speaking, loop condition or catch block handles it
+                if (signal.aborted) throw new Error('Aborted');
+
+                // Determine next step
+                if (rIdx < repeatCount) {
+                    // Wait Same Word Interval
+                    setDisplayMessage(`等待重複... (${sameWordInterval}秒)`);
+                    await wait(sameWordInterval * 1000, signal);
+                    stateRef.current.repeatIndex += 1;
+                } else {
+                    // Wait Next Word Interval
+                    // Only wait if it's not the very last word
+                    if (wIdx < wordList.length - 1) {
+                        setDisplayMessage(`準備下一個詞... (${nextWordInterval}秒)`);
+                        await wait(nextWordInterval * 1000, signal);
+                    }
+                    stateRef.current.wordIndex += 1;
+                    stateRef.current.repeatIndex = 1;
+                }
+            }
+
+            // Finished
+            setStatus("finished");
+            setDisplayMessage("默書完成！");
+            speakWord("默書完成");
+
+        } catch (error) {
+            // If aborted (paused), we just exit the loop. 
+            // The stateRef holds the position for resumption.
+        }
+    };
+
+    const handlePause = () => {
+        setStatus("paused");
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        window.speechSynthesis.cancel();
+        setDisplayMessage("已暫停");
+    };
+
+    const handleResume = () => {
+        startDictation(true);
+    };
+
+    const handleReset = () => {
+        setStatus("idle");
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        window.speechSynthesis.cancel();
+        setCurrentWordIndex(0);
+        setCurrentRepeat(0);
+        setDisplayMessage("");
+        setCountdownValue(0);
+        stateRef.current = { status: "idle", wordIndex: 0, repeatIndex: 1 };
+    };
+
+    const getVoiceLabel = (v) => {
+        let langLabel = "未知";
+        const nameAndLang = (v.name + v.lang).toLowerCase();
+
+        if (nameAndLang.includes("hk") || nameAndLang.includes("yue") || nameAndLang.includes("cantonese") || nameAndLang.includes("粵")) {
+            langLabel = "粵語";
+        } else if (nameAndLang.includes("tw") || nameAndLang.includes("cn") || nameAndLang.includes("zh") || nameAndLang.includes("mandarin")) {
+            langLabel = "普通話";
+        } else if (nameAndLang.includes("us") || nameAndLang.includes("united states")) {
+            langLabel = "英語(美式)";
+        } else if (v.lang.includes("en")) {
+            langLabel = "英語";
+        }
+        return `${langLabel} - ${v.name}`;
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 pb-12 font-sans text-gray-800">
+            {/* Header */}
+            <div className="bg-white shadow-sm sticky top-0 z-10">
+                <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span className="bg-indigo-600 text-white p-1.5 rounded-lg"><Volume2 size={20} /></span>
+                        智能默書助理
+                    </h1>
+                    <div className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        {availableVoices.length > 0 ? `已篩選 ${availableVoices.length} 個常用語音` : "正在載入語音..."}
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
+                
+                {/* Status Display Area */}
+                {status !== 'idle' && (
+                    <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl p-8 text-center shadow-xl transform transition-all">
+                        {status === 'countdown' ? (
+                            <div className="py-10 animate-pulse">
+                                <div className="text-8xl font-black text-yellow-400 mb-4">{countdownValue}</div>
+                                <div className="text-indigo-200 text-xl">準備開始</div>
+                            </div>
+                        ) : (
+                            <div className="py-4">
+                                {status === 'finished' ? (
+                                    <div className="py-6">
+                                        <div className="inline-flex items-center justify-center p-4 bg-green-500 rounded-full mb-4 shadow-lg">
+                                            <CheckCircle size={48} className="text-white" />
+                                        </div>
+                                        <div className="text-4xl font-bold text-white mb-2">默書完成</div>
+                                        <p className="text-indigo-200">您已完成所有詞語的默寫</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="inline-block bg-indigo-800/50 backdrop-blur-sm px-4 py-1.5 rounded-full text-xs font-medium tracking-wider mb-6 text-indigo-200 border border-indigo-700">
+                                            {status === 'paused' ? '暫停中' : '默書進行中'}
+                                        </div>
+                                        
+                                        <div className="mb-8">
+                                            <div className="text-sm text-indigo-300 mb-1">當前進度</div>
+                                            <div className="text-5xl font-bold mb-2 tracking-tight">
+                                                詞語 {currentWordIndex + 1} <span className="text-2xl text-indigo-400">/ {words.length}</span>
+                                            </div>
+                                            <div className="text-lg text-indigo-200 font-medium">
+                                                {displayMessage}
+                                            </div>
+                                        </div>
+
+                                        <div className="max-w-md mx-auto mb-8">
+                                            <div className="flex justify-between text-xs text-indigo-300 mb-2 px-1">
+                                                <span>進度</span>
+                                                <span>{Math.round(((currentWordIndex) / words.length) * 100)}%</span>
+                                            </div>
+                                            <div className="h-3 bg-gray-700/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
+                                                <div 
+                                                    className={`h-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-500 ease-out ${status === 'paused' ? 'opacity-50' : ''}`}
+                                                    style={{ width: `${((currentWordIndex) / words.length) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                {/* Controls */}
+                                <div className="flex justify-center gap-4 mt-4">
+                                    {status === 'running' && (
+                                        <button onClick={handlePause} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-full font-bold transition-all shadow-lg hover:shadow-amber-500/30 active:scale-95">
+                                            <Pause size={20} fill="currentColor" /> 暫停
+                                        </button>
+                                    )}
+                                    {status === 'paused' && (
+                                        <button onClick={handleResume} className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-full font-bold transition-all shadow-lg hover:shadow-emerald-500/30 active:scale-95">
+                                            <Play size={20} fill="currentColor" /> 繼續
+                                        </button>
+                                    )}
+                                    <button onClick={handleReset} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-full font-medium transition-all border border-white/10 active:scale-95 backdrop-blur-sm">
+                                        <RotateCcw size={18} /> 重置
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Main Content Grid */}
+                <div className={`grid md:grid-cols-2 gap-8 transition-all duration-500 ${status !== 'idle' ? 'opacity-40 pointer-events-none grayscale-[0.5]' : ''}`}>
+                    
+                    {/* Input Section */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full">
+                        <h2 className="font-bold text-gray-700 mb-4 flex items-center gap-2 text-lg">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs">1</span>
+                            輸入內容
+                        </h2>
+                        <div className="flex-1 relative">
+                            <textarea
+                                className="w-full h-full min-h-[300px] p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none text-lg leading-relaxed transition-all"
+                                placeholder="在此輸入詞語，用換行分隔..."
+                                value={textInput}
+                                onChange={(e) => setTextInput(e.target.value)}
+                            ></textarea>
+                            <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 bg-white px-2 py-1 rounded-md shadow-sm border border-gray-100">
+                                {textInput.split(/[\n,，]+/).filter(w => w.trim().length > 0).length} 個詞語
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Settings Section */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h2 className="font-bold text-gray-700 mb-6 flex items-center gap-2 text-lg">
+                            <Settings size={20} className="text-indigo-600" />
+                            設定參數
+                        </h2>
+
+                        <div className="space-y-8">
+                            {/* Voice */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-600">語音選擇</label>
+                                <div className="relative">
+                                    <select 
+                                        className="w-full p-3 pr-10 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                                        value={selectedVoice || ""}
+                                        onChange={(e) => setSelectedVoice(e.target.value)}
+                                    >
+                                        {availableVoices.length === 0 && <option>正在載入語音...</option>}
+                                        {availableVoices.map(v => (
+                                            <option key={v.name} value={v.name}>{getVoiceLabel(v)}</option>
+                                        ))}
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <Volume2 size={16} />
+                                    </div>
+                                </div>
+                                <div className="text-xs text-gray-400 px-1">
+                                    * 僅顯示常用的粵語、普通話及美式英語
+                                </div>
+                            </div>
+
+                            {/* Sliders Group */}
+                            <div className="space-y-6">
+                                {/* Speech Rate */}
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="text-sm font-medium text-gray-600">語速</label>
+                                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{speechRate}x</span>
+                                    </div>
+                                    <input 
+                                        type="range" min="0.7" max="1.3" step="0.1"
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                        value={speechRate}
+                                        onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                                    />
+                                    <div className="flex justify-between text-[10px] text-gray-400 mt-1 uppercase tracking-wider">
+                                        <span>慢</span>
+                                        <span>快</span>
+                                    </div>
+                                </div>
+
+                                {/* Start Countdown */}
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="text-sm font-medium text-gray-600">開始前倒數</label>
+                                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{startCountdown} 秒</span>
+                                    </div>
+                                    <input 
+                                        type="range" min="0" max="10" step="1"
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                        value={startCountdown}
+                                        onChange={(e) => setStartCountdown(parseInt(e.target.value))}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Intervals Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-gray-600">重複間隔</label>
+                                    <select 
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        value={sameWordInterval}
+                                        onChange={(e) => setSameWordInterval(parseInt(e.target.value))}
+                                    >
+                                        {[...Array(10)].map((_, i) => (
+                                            <option key={i+1} value={i+1}>{i+1} 秒</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-gray-600">下個詞間隔</label>
+                                    <select 
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        value={nextWordInterval}
+                                        onChange={(e) => setNextWordInterval(parseInt(e.target.value))}
+                                    >
+                                        {[...Array(10)].map((_, i) => (
+                                            <option key={i+1} value={i+1}>{i+1} 秒</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Repeat Count */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-600 block">每個詞重複次數</label>
+                                <div className="flex gap-2">
+                                    {[1, 2, 3, 4, 5].map(num => (
+                                        <button 
+                                            key={num}
+                                            onClick={() => setRepeatCount(num)}
+                                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                repeatCount === num 
+                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105' 
+                                                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Start Button Area */}
+                {status === 'idle' && (
+                    <div className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none px-4">
+                        <button 
+                            onClick={() => startDictation(false)}
+                            className="pointer-events-auto flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white text-lg px-10 py-4 rounded-full font-bold shadow-xl shadow-indigo-500/40 transform transition-all hover:scale-105 active:scale-95 group"
+                        >
+                            <Play size={24} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform" /> 
+                            開始默書
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default App;
