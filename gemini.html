@@ -19,43 +19,42 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
         }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 text-gray-800">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 圖示組件 (Icons) ---
-        const Play = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        );
-        const Pause = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-        );
-        const RotateCcw = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"></path><path d="M3 3v9h9"></path></svg>
-        );
-        const Settings = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-        );
-        const CheckCircle = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-        );
-        const Volume2 = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-        );
+        // --- Icons ---
+        const Play = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
+        const Pause = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>;
+        const RotateCcw = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"></path><path d="M3 3v9h9"></path></svg>;
+        const SettingsIcon = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
+        const CheckCircle = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>;
+        const Volume2 = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>;
+        const Plus = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const History = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"></path><polyline points="3 3 3 12 12 12"></polyline></svg>;
+        const Repeat = ({ size = 16, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>;
 
-        // --- 主程式 (App) ---
+        // --- App ---
         const App = () => {
-            // --- State ---
+            // State
             const [textInput, setTextInput] = useState("蘋果\n香蕉\n橙\n士多啤梨");
             const [words, setWords] = useState([]);
+            const [newWordInput, setNewWordInput] = useState(""); // For adding words dynamically
             
             // Settings
             const [startCountdown, setStartCountdown] = useState(3);
-            const [sameWordInterval, set] = useState(2);
+            const [sameWordInterval, setSameWordInterval] = useState(2);
             const [nextWordInterval, setNextWordInterval] = useState(3);
             const [repeatCount, setRepeatCount] = useState(2);
             const [speechRate, setSpeechRate] = useState(1);
@@ -65,19 +64,36 @@
             // Runtime State
             const [status, setStatus] = useState("idle"); // idle, countdown, running, paused, finished
             const [currentWordIndex, setCurrentWordIndex] = useState(0);
-            const [currentRepeat, setCurrentRepeat] = useState(0);
             const [displayMessage, setDisplayMessage] = useState("");
             const [countdownValue, setCountdownValue] = useState(0);
+            const [processingWord, setProcessingWord] = useState(""); // Current word being read
+            const [isInterrupting, setIsInterrupting] = useState(false); // UI indicator
 
-            // Refs
+            // Refs for Logic
             const abortControllerRef = useRef(null);
+            
+            // Ref: Single source of truth for words and queue
             const stateRef = useRef({
                 status: "idle",
                 wordIndex: 0,
-                repeatIndex: 1
+                repeatIndex: 1,
+                wordsList: [],       // The main list
+                interruptQueue: []   // Queue for replaying/inserting words
             });
 
             // --- Effects ---
+            
+            // Init Words List from Input
+            useEffect(() => {
+                const parsed = textInput.split(/[\n,，]+/).map(w => w.trim()).filter(w => w.length > 0);
+                setWords(parsed);
+                // Only update ref if idle, otherwise running logic manages it
+                if (status === 'idle') {
+                    stateRef.current.wordsList = parsed;
+                }
+            }, [textInput, status]);
+
+            // Voice Loading
             useEffect(() => {
                 const loadVoices = () => {
                     const allVoices = window.speechSynthesis.getVoices();
@@ -88,41 +104,24 @@
                         return keywords.some(k => searchStr.includes(k.toLowerCase()));
                     };
 
-                    // 1. 粵語
-                    const cantoneseVoices = allVoices.filter(v => matches(v, ['HK', 'yue', 'cantonese', '粵']));
+                    const cantonese = allVoices.filter(v => matches(v, ['HK', 'yue', 'cantonese', '粵']));
+                    const mandarin = allVoices.filter(v => matches(v, ['CN', 'TW', 'zh', 'mandarin', 'putonghua']) && !matches(v, ['HK', 'yue', 'cantonese', '粵']));
+                    const english = allVoices.filter(v => matches(v, ['en-US', 'US', 'United States']));
 
-                    // 2. 普通話
-                    const mandarinVoices = allVoices.filter(v => 
-                        matches(v, ['CN', 'TW', 'zh', 'mandarin', 'putonghua']) && 
-                        !matches(v, ['HK', 'yue', 'cantonese', '粵'])
-                    );
+                    const filtered = [...cantonese.slice(0, 3), ...mandarin.slice(0, 3), ...english.slice(0, 3)];
+                    const unique = Array.from(new Map(filtered.map(v => [v.name, v])).values());
+                    const final = unique.length > 0 ? unique : allVoices.slice(0, 10);
 
-                    // 3. 英語
-                    const englishVoices = allVoices.filter(v => matches(v, ['en-US', 'US', 'United States']));
-
-                    const filteredList = [
-                        ...cantoneseVoices.slice(0, 3),
-                        ...mandarinVoices.slice(0, 3),
-                        ...englishVoices.slice(0, 3)
-                    ];
-
-                    const uniqueList = Array.from(new Map(filteredList.map(v => [v.name, v])).values());
-                    const finalVoices = uniqueList.length > 0 ? uniqueList : allVoices.slice(0, 10);
-
-                    setAvailableVoices(finalVoices);
+                    setAvailableVoices(final);
                     
-                    if (finalVoices.length > 0) {
-                        const currentExists = finalVoices.find(v => v.name === selectedVoice);
-                        if (!currentExists) {
-                            const defaultVoice = cantoneseVoices[0] || mandarinVoices[0] || englishVoices[0] || finalVoices[0];
-                            setSelectedVoice(defaultVoice ? defaultVoice.name : finalVoices[0].name);
-                        }
+                    if (final.length > 0 && !selectedVoice) {
+                        const defaultVoice = cantonese[0] || mandarin[0] || english[0] || final[0];
+                        setSelectedVoice(defaultVoice.name);
                     }
                 };
 
                 loadVoices();
                 window.speechSynthesis.onvoiceschanged = loadVoices;
-                
                 return () => {
                     window.speechSynthesis.cancel();
                     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -136,7 +135,7 @@
             // --- Logic Helpers ---
             const wait = (ms, signal) => {
                 return new Promise((resolve, reject) => {
-                    const timer = setTimeout(() => resolve(), ms);
+                    const timer = setTimeout(resolve, ms);
                     signal.addEventListener('abort', () => {
                         clearTimeout(timer);
                         reject(new Error('Aborted'));
@@ -146,16 +145,13 @@
 
             const speakWord = (text) => {
                 return new Promise((resolve, reject) => {
-                    window.speechSynthesis.cancel(); 
-
+                    window.speechSynthesis.cancel();
                     const utterance = new SpeechSynthesisUtterance(text);
                     const voice = availableVoices.find(v => v.name === selectedVoice);
                     if (voice) utterance.voice = voice;
                     utterance.rate = speechRate;
-
                     utterance.onend = () => resolve();
-                    utterance.onerror = (e) => resolve();
-                    
+                    utterance.onerror = () => resolve(); // Handle error gracefully
                     window.speechSynthesis.speak(utterance);
                 });
             };
@@ -167,57 +163,81 @@
                 abortControllerRef.current = controller;
                 const signal = controller.signal;
 
-                let wordList = words;
-
+                // If starting fresh
                 if (!resume) {
-                    const parsed = textInput.split(/[\n,，]+/).map(w => w.trim()).filter(w => w.length > 0);
-                    if (parsed.length === 0) {
+                    if (stateRef.current.wordsList.length === 0) {
                         alert("請輸入默書內容");
                         return;
                     }
-                    setWords(parsed);
-                    wordList = parsed;
-                    
                     setStatus("countdown");
                     setCountdownValue(startCountdown);
-
                     try {
                         for (let i = startCountdown; i > 0; i--) {
                             setCountdownValue(i);
                             await wait(1000, signal);
                         }
                     } catch (err) { return; }
-
+                    
+                    // Reset Logic State
                     stateRef.current.wordIndex = 0;
                     stateRef.current.repeatIndex = 1;
+                    stateRef.current.interruptQueue = [];
                 }
 
                 setStatus("running");
 
                 try {
-                    while (stateRef.current.wordIndex < wordList.length) {
-                        const wIdx = stateRef.current.wordIndex;
-                        const rIdx = stateRef.current.repeatIndex;
+                    while (true) {
+                        // 1. Determine Target Word
+                        let targetWord = "";
+                        let isInterrupt = false;
 
-                        setCurrentWordIndex(wIdx);
-                        setCurrentRepeat(rIdx);
-                        
-                        setDisplayMessage(`正在朗讀: ${wordList[wIdx]}`);
-                        await speakWord(wordList[wIdx]);
-                        
-                        if (signal.aborted) throw new Error('Aborted');
-
-                        if (rIdx < repeatCount) {
-                            setDisplayMessage(`等待重複... (${sameWordInterval}秒)`);
-                            await wait(sameWordInterval * 1000, signal);
-                            stateRef.current.repeatIndex += 1;
+                        // Check Interrupt Queue First
+                        if (stateRef.current.interruptQueue.length > 0) {
+                            targetWord = stateRef.current.interruptQueue[0]; // Peek
+                            isInterrupt = true;
+                        } else if (stateRef.current.wordIndex < stateRef.current.wordsList.length) {
+                            targetWord = stateRef.current.wordsList[stateRef.current.wordIndex];
+                            isInterrupt = false;
                         } else {
-                            if (wIdx < wordList.length - 1) {
-                                setDisplayMessage(`準備下一個詞... (${nextWordInterval}秒)`);
-                                await wait(nextWordInterval * 1000, signal);
+                            break; // Finished
+                        }
+
+                        // Update UI
+                        setProcessingWord(targetWord);
+                        setIsInterrupting(isInterrupt);
+                        if (!isInterrupt) {
+                            setCurrentWordIndex(stateRef.current.wordIndex);
+                        }
+                        
+                        // Display Logic
+                        const prefix = isInterrupt ? "【插播】" : `第 ${stateRef.current.wordIndex + 1} 個詞`;
+                        
+                        // 2. Speak & Repeat Cycle
+                        while (stateRef.current.repeatIndex <= repeatCount) {
+                            setDisplayMessage(`${prefix} (第 ${stateRef.current.repeatIndex} 次)`);
+                            
+                            await speakWord(targetWord);
+                            
+                            if (signal.aborted) throw new Error('Aborted');
+
+                            if (stateRef.current.repeatIndex < repeatCount) {
+                                setDisplayMessage(`${prefix} 等待重複...`);
+                                await wait(sameWordInterval * 1000, signal);
                             }
-                            stateRef.current.wordIndex += 1;
-                            stateRef.current.repeatIndex = 1;
+                            stateRef.current.repeatIndex++;
+                        }
+
+                        // 3. Wait Next Word
+                        setDisplayMessage(isInterrupt ? "插播完畢，準備返回..." : "準備下一個詞...");
+                        await wait(nextWordInterval * 1000, signal);
+
+                        // 4. Update Index/Queue
+                        stateRef.current.repeatIndex = 1; // Reset repeats
+                        if (isInterrupt) {
+                            stateRef.current.interruptQueue.shift(); // Remove from queue
+                        } else {
+                            stateRef.current.wordIndex++; // Next normal word
                         }
                     }
 
@@ -225,9 +245,12 @@
                     setDisplayMessage("默書完成！");
                     speakWord("默書完成");
 
-                } catch (error) {}
+                } catch (error) {
+                    // Logic pauses here, stateRef holds position
+                }
             };
 
+            // --- Handlers ---
             const handlePause = () => {
                 setStatus("paused");
                 if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -235,123 +258,222 @@
                 setDisplayMessage("已暫停");
             };
 
-            const handleResume = () => {
-                startDictation(true);
-            };
+            const handleResume = () => startDictation(true);
 
             const handleReset = () => {
                 setStatus("idle");
                 if (abortControllerRef.current) abortControllerRef.current.abort();
                 window.speechSynthesis.cancel();
                 setCurrentWordIndex(0);
-                setCurrentRepeat(0);
                 setDisplayMessage("");
                 setCountdownValue(0);
-                stateRef.current = { status: "idle", wordIndex: 0, repeatIndex: 1 };
+                setIsInterrupting(false);
+                setProcessingWord("");
+                stateRef.current = { 
+                    status: "idle", 
+                    wordIndex: 0, 
+                    repeatIndex: 1, 
+                    wordsList: stateRef.current.wordsList, // Keep words
+                    interruptQueue: [] 
+                };
+            };
+
+            // Dynamic: Add Word
+            const handleAddWord = (e) => {
+                e.preventDefault();
+                const w = newWordInput.trim();
+                if (!w) return;
+
+                // Update UI State
+                const newWords = [...words, w];
+                setWords(newWords);
+                setTextInput(newWords.join('\n')); // Sync textarea
+                setNewWordInput("");
+
+                // Sync Logic Ref
+                stateRef.current.wordsList = newWords;
+            };
+
+            // Dynamic: Insert/Replay Word
+            const handleInsertWord = (word) => {
+                if (status === 'idle' || status === 'finished') return;
+                
+                // Add to queue
+                stateRef.current.interruptQueue.push(word);
+                
+                // Visual feedback (optional)
+                // We rely on the "Processing..." UI update in loop
+                
+                // If paused, maybe user wants to queue it up for resume? Yes.
             };
 
             const getVoiceLabel = (v) => {
-                let langLabel = "未知";
-                const nameAndLang = (v.name + v.lang).toLowerCase();
-
-                if (nameAndLang.includes("hk") || nameAndLang.includes("yue") || nameAndLang.includes("cantonese") || nameAndLang.includes("粵")) {
-                    langLabel = "粵語";
-                } else if (nameAndLang.includes("tw") || nameAndLang.includes("cn") || nameAndLang.includes("zh") || nameAndLang.includes("mandarin")) {
-                    langLabel = "普通話";
-                } else if (nameAndLang.includes("us") || nameAndLang.includes("united states")) {
-                    langLabel = "英語(美式)";
-                } else if (v.lang.includes("en")) {
-                    langLabel = "英語";
-                }
-                return `${langLabel} - ${v.name}`;
+                let lang = "未知";
+                const s = (v.name + v.lang).toLowerCase();
+                if (s.includes("hk") || s.includes("yue") || s.includes("cantonese") || s.includes("粵")) lang = "粵語";
+                else if (s.includes("tw") || s.includes("cn") || s.includes("zh") || s.includes("mandarin")) lang = "普通話";
+                else if (s.includes("us") || s.includes("united states")) lang = "英語(美式)";
+                else if (v.lang.includes("en")) lang = "英語";
+                return `${lang} - ${v.name}`;
             };
 
-            // --- UI Render ---
             return (
-                <div className="min-h-screen bg-gray-50 pb-12 font-sans text-gray-800">
-                    <div className="bg-white shadow-sm sticky top-0 z-10">
-                        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-                            <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <div className="min-h-screen bg-gray-50 pb-20 font-sans text-gray-800">
+                    {/* Top Bar */}
+                    <div className="bg-white shadow-sm sticky top-0 z-20">
+                        <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+                            <h1 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
                                 <span className="bg-indigo-600 text-white p-1.5 rounded-lg"><Volume2 size={20} /></span>
                                 智能默書助理
                             </h1>
-                            <div className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                {availableVoices.length > 0 ? `已篩選 ${availableVoices.length} 個常用語音` : "正在載入語音..."}
+                            <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full hidden sm:block">
+                                {availableVoices.length > 0 ? `已就緒` : "載入中..."}
                             </div>
                         </div>
                     </div>
 
-                    <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
+                    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+                        
+                        {/* --- RUNNING MODE UI --- */}
                         {status !== 'idle' && (
-                            <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl p-8 text-center shadow-xl transform transition-all">
-                                {status === 'countdown' ? (
-                                    <div className="py-10 animate-pulse">
-                                        <div className="text-8xl font-black text-yellow-400 mb-4">{countdownValue}</div>
-                                        <div className="text-indigo-200 text-xl">準備開始</div>
-                                    </div>
-                                ) : (
-                                    <div className="py-4">
-                                        {status === 'finished' ? (
-                                            <div className="py-6">
-                                                <div className="inline-flex items-center justify-center p-4 bg-green-500 rounded-full mb-4 shadow-lg">
-                                                    <CheckCircle size={48} className="text-white" />
-                                                </div>
-                                                <div className="text-4xl font-bold text-white mb-2">默書完成</div>
-                                                <p className="text-indigo-200">您已完成所有詞語的默寫</p>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <div className="inline-block bg-indigo-800/50 backdrop-blur-sm px-4 py-1.5 rounded-full text-xs font-medium tracking-wider mb-6 text-indigo-200 border border-indigo-700">
-                                                    {status === 'paused' ? '暫停中' : '默書進行中'}
-                                                </div>
-                                                
-                                                <div className="mb-8">
-                                                    <div className="text-sm text-indigo-300 mb-1">當前進度</div>
-                                                    <div className="text-5xl font-bold mb-2 tracking-tight">
-                                                        詞語 {currentWordIndex + 1} <span className="text-2xl text-indigo-400">/ {words.length}</span>
-                                                    </div>
-                                                    <div className="text-lg text-indigo-200 font-medium">
-                                                        {displayMessage}
-                                                    </div>
-                                                </div>
+                            <div className="space-y-6">
+                                {/* Main Display Card */}
+                                <div className={`relative bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl p-6 sm:p-10 text-center shadow-xl overflow-hidden transition-all duration-300 ${isInterrupting ? 'ring-4 ring-yellow-400' : ''}`}>
+                                    
+                                    {isInterrupting && (
+                                        <div className="absolute top-4 right-4 bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold animate-pulse flex items-center gap-1">
+                                            <Repeat size={14}/> 插播中
+                                        </div>
+                                    )}
 
-                                                <div className="max-w-md mx-auto mb-8">
-                                                    <div className="flex justify-between text-xs text-indigo-300 mb-2 px-1">
-                                                        <span>進度</span>
-                                                        <span>{Math.round(((currentWordIndex) / words.length) * 100)}%</span>
-                                                    </div>
-                                                    <div className="h-3 bg-gray-700/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
-                                                        <div 
-                                                            className={`h-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-500 ease-out ${status === 'paused' ? 'opacity-50' : ''}`}
-                                                            style={{ width: `${((currentWordIndex) / words.length) * 100}%` }}
-                                                        ></div>
-                                                    </div>
-                                                </div>
-                                            </>
-                                        )}
-                                        
-                                        <div className="flex justify-center gap-4 mt-4">
-                                            {status === 'running' && (
-                                                <button onClick={handlePause} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-full font-bold transition-all shadow-lg hover:shadow-amber-500/30 active:scale-95">
-                                                    <Pause size={20} /> 暫停
-                                                </button>
-                                            )}
-                                            {status === 'paused' && (
-                                                <button onClick={handleResume} className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-full font-bold transition-all shadow-lg hover:shadow-emerald-500/30 active:scale-95">
-                                                    <Play size={20} /> 繼續
-                                                </button>
-                                            )}
-                                            <button onClick={handleReset} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-full font-medium transition-all border border-white/10 active:scale-95 backdrop-blur-sm">
-                                                <RotateCcw size={18} /> 重置
+                                    {status === 'countdown' ? (
+                                        <div className="py-8 animate-pulse">
+                                            <div className="text-8xl font-black text-yellow-400 mb-4">{countdownValue}</div>
+                                            <div className="text-indigo-200 text-xl">準備開始</div>
+                                        </div>
+                                    ) : status === 'finished' ? (
+                                        <div className="py-4">
+                                            <div className="inline-flex items-center justify-center p-4 bg-green-500 rounded-full mb-4 shadow-lg">
+                                                <CheckCircle size={48} className="text-white" />
+                                            </div>
+                                            <div className="text-3xl font-bold text-white mb-2">默書完成</div>
+                                            <button onClick={handleReset} className="mt-6 bg-white/20 hover:bg-white/30 text-white px-8 py-2 rounded-full font-medium transition-all">
+                                                返回設定
                                             </button>
                                         </div>
+                                    ) : (
+                                        <div className="relative z-10">
+                                            {/* Status Badge */}
+                                            <div className="inline-block bg-black/30 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-medium tracking-wider mb-8 text-indigo-100 border border-white/10">
+                                                {status === 'paused' ? '已暫停' : '進行中'}
+                                            </div>
+                                            
+                                            {/* Big Word Display */}
+                                            <div className="mb-10">
+                                                <div className="text-lg text-indigo-300 mb-2 font-medium">正在朗讀</div>
+                                                <div className="text-4xl sm:text-6xl font-bold mb-4 tracking-tight drop-shadow-lg min-h-[4rem]">
+                                                    {processingWord}
+                                                </div>
+                                                <div className="text-xl text-indigo-200 font-medium h-8">
+                                                    {displayMessage}
+                                                </div>
+                                            </div>
+
+                                            {/* Progress Bar (Only for main flow) */}
+                                            <div className="max-w-md mx-auto mb-8 opacity-80">
+                                                <div className="flex justify-between text-xs text-indigo-300 mb-2 px-1">
+                                                    <span>總進度</span>
+                                                    <span>{currentWordIndex + 1} / {stateRef.current.wordsList.length}</span>
+                                                </div>
+                                                <div className="h-2 bg-gray-700/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
+                                                    <div 
+                                                        className={`h-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-500 ease-out`}
+                                                        style={{ width: `${((currentWordIndex) / Math.max(stateRef.current.wordsList.length, 1)) * 100}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Controls */}
+                                            <div className="flex justify-center gap-4">
+                                                {status === 'running' && (
+                                                    <button onClick={handlePause} className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-full font-bold transition-all shadow-lg hover:shadow-amber-500/30 active:scale-95">
+                                                        <Pause size={20} fill="currentColor" /> 暫停
+                                                    </button>
+                                                )}
+                                                {status === 'paused' && (
+                                                    <button onClick={handleResume} className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-full font-bold transition-all shadow-lg hover:shadow-emerald-500/30 active:scale-95">
+                                                        <Play size={20} fill="currentColor" /> 繼續
+                                                    </button>
+                                                )}
+                                                <button onClick={handleReset} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-full font-medium transition-all border border-white/10 active:scale-95 backdrop-blur-sm">
+                                                    <RotateCcw size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Dynamic Interactions Panel */}
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    {/* History / Replay */}
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col h-64">
+                                        <h3 className="text-gray-700 font-bold mb-3 flex items-center gap-2 text-sm">
+                                            <History size={18} className="text-indigo-500" />
+                                            點擊已讀單詞以插播
+                                        </h3>
+                                        <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                                            <div className="flex flex-wrap gap-2">
+                                                {words.slice(0, currentWordIndex).map((w, idx) => (
+                                                    <button 
+                                                        key={`${idx}-${w}`}
+                                                        onClick={() => handleInsertWord(w)}
+                                                        className="px-3 py-1.5 bg-gray-100 hover:bg-indigo-100 hover:text-indigo-700 hover:border-indigo-200 border border-transparent rounded-lg text-sm transition-colors text-gray-600"
+                                                    >
+                                                        {w}
+                                                    </button>
+                                                ))}
+                                                {currentWordIndex === 0 && (
+                                                    <span className="text-gray-400 text-sm italic py-2">尚未有已讀單詞...</span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
+
+                                    {/* Add Word Dynamically */}
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col h-64">
+                                        <h3 className="text-gray-700 font-bold mb-3 flex items-center gap-2 text-sm">
+                                            <Plus size={18} className="text-green-500" />
+                                            追加新詞語
+                                        </h3>
+                                        <div className="flex-1 flex flex-col justify-center">
+                                            <form onSubmit={handleAddWord} className="flex gap-2">
+                                                <input 
+                                                    type="text" 
+                                                    className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                                                    placeholder="輸入單詞..."
+                                                    value={newWordInput}
+                                                    onChange={e => setNewWordInput(e.target.value)}
+                                                />
+                                                <button 
+                                                    type="submit"
+                                                    disabled={!newWordInput.trim()}
+                                                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-5 rounded-xl font-bold transition-colors"
+                                                >
+                                                    加入
+                                                </button>
+                                            </form>
+                                            <div className="mt-4 text-xs text-gray-400">
+                                                * 新加入的詞語會排在隊伍最後面 (第 {words.length + 1} 個)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
-                        <div className={`grid md:grid-cols-2 gap-8 transition-all duration-500 ${status !== 'idle' ? 'opacity-40 pointer-events-none grayscale-[0.5]' : ''}`}>
-                            
+                        {/* --- SETUP MODE UI --- */}
+                        <div className={`grid md:grid-cols-2 gap-8 transition-all duration-500 ${status !== 'idle' ? 'hidden' : ''}`}>
+                            {/* Input */}
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full">
                                 <h2 className="font-bold text-gray-700 mb-4 flex items-center gap-2 text-lg">
                                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs">1</span>
@@ -365,14 +487,15 @@
                                         onChange={(e) => setTextInput(e.target.value)}
                                     ></textarea>
                                     <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-400 bg-white px-2 py-1 rounded-md shadow-sm border border-gray-100">
-                                        {textInput.split(/[\n,，]+/).filter(w => w.trim().length > 0).length} 個詞語
+                                        {words.length} 個詞語
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Settings */}
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                 <h2 className="font-bold text-gray-700 mb-6 flex items-center gap-2 text-lg">
-                                    <Settings size={20} className="text-indigo-600" />
+                                    <SettingsIcon size={20} className="text-indigo-600" />
                                     設定參數
                                 </h2>
 
@@ -394,9 +517,6 @@
                                                 <Volume2 size={16} />
                                             </div>
                                         </div>
-                                        <div className="text-xs text-gray-400 px-1">
-                                            * 僅顯示常用的粵語、普通話及美式英語
-                                        </div>
                                     </div>
 
                                     <div className="space-y-6">
@@ -405,16 +525,7 @@
                                                 <label className="text-sm font-medium text-gray-600">語速</label>
                                                 <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{speechRate}x</span>
                                             </div>
-                                            <input 
-                                                type="range" min="0.7" max="1.3" step="0.1"
-                                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                                                value={speechRate}
-                                                onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
-                                            />
-                                            <div className="flex justify-between text-[10px] text-gray-400 mt-1 uppercase tracking-wider">
-                                                <span>慢</span>
-                                                <span>快</span>
-                                            </div>
+                                            <input type="range" min="0.7" max="1.3" step="0.1" className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={speechRate} onChange={(e) => setSpeechRate(parseFloat(e.target.value))} />
                                         </div>
 
                                         <div>
@@ -422,38 +533,21 @@
                                                 <label className="text-sm font-medium text-gray-600">開始前倒數</label>
                                                 <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{startCountdown} 秒</span>
                                             </div>
-                                            <input 
-                                                type="range" min="0" max="10" step="1"
-                                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                                                value={startCountdown}
-                                                onChange={(e) => setStartCountdown(parseInt(e.target.value))}
-                                            />
+                                            <input type="range" min="0" max="10" step="1" className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={startCountdown} onChange={(e) => setStartCountdown(parseInt(e.target.value))} />
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="block text-sm font-medium text-gray-600">重複間隔</label>
-                                            <select 
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                value={sameWordInterval}
-                                                onChange={(e) => set(parseInt(e.target.value))}
-                                            >
-                                                {[...Array(10)].map((_, i) => (
-                                                    <option key={i+1} value={i+1}>{i+1} 秒</option>
-                                                ))}
+                                            <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={sameWordInterval} onChange={(e) => setSameWordInterval(parseInt(e.target.value))}>
+                                                {[...Array(10)].map((_, i) => <option key={i+1} value={i+1}>{i+1} 秒</option>)}
                                             </select>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="block text-sm font-medium text-gray-600">下個詞間隔</label>
-                                            <select 
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                value={nextWordInterval}
-                                                onChange={(e) => setNextWordInterval(parseInt(e.target.value))}
-                                            >
-                                                {[...Array(10)].map((_, i) => (
-                                                    <option key={i+1} value={i+1}>{i+1} 秒</option>
-                                                ))}
+                                            <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={nextWordInterval} onChange={(e) => setNextWordInterval(parseInt(e.target.value))}>
+                                                {[...Array(10)].map((_, i) => <option key={i+1} value={i+1}>{i+1} 秒</option>)}
                                             </select>
                                         </div>
                                     </div>
@@ -462,17 +556,7 @@
                                         <label className="text-sm font-medium text-gray-600 block">每個詞重複次數</label>
                                         <div className="flex gap-2">
                                             {[1, 2, 3, 4, 5].map(num => (
-                                                <button 
-                                                    key={num}
-                                                    onClick={() => setRepeatCount(num)}
-                                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                                                        repeatCount === num 
-                                                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105' 
-                                                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
-                                                    }`}
-                                                >
-                                                    {num}
-                                                </button>
+                                                <button key={num} onClick={() => setRepeatCount(num)} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${repeatCount === num ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'}`}>{num}</button>
                                             ))}
                                         </div>
                                     </div>
@@ -480,14 +564,11 @@
                             </div>
                         </div>
 
+                        {/* Start Button */}
                         {status === 'idle' && (
                             <div className="fixed bottom-8 left-0 right-0 flex justify-center pointer-events-none px-4">
-                                <button 
-                                    onClick={() => startDictation(false)}
-                                    className="pointer-events-auto flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white text-lg px-10 py-4 rounded-full font-bold shadow-xl shadow-indigo-500/40 transform transition-all hover:scale-105 active:scale-95 group"
-                                >
-                                    <Play size={24} className="group-hover:translate-x-0.5 transition-transform" /> 
-                                    開始默書
+                                <button onClick={() => startDictation(false)} className="pointer-events-auto flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white text-lg px-10 py-4 rounded-full font-bold shadow-xl shadow-indigo-500/40 transform transition-all hover:scale-105 active:scale-95 group">
+                                    <Play size={24} className="group-hover:translate-x-0.5 transition-transform" /> 開始默書
                                 </button>
                             </div>
                         )}
