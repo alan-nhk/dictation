@@ -26,6 +26,21 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        /* Custom Scrollbar for interaction panels */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c7c7c7;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -48,7 +63,7 @@
         // --- App ---
         const App = () => {
             // State
-            const [textInput, setTextInput] = useState("蘋果\n香蕉\n橙\n士多啤梨");
+            const [textInput, setTextInput] = useState("Apple\nBanana\nOrange\nStrawberry");
             const [words, setWords] = useState([]);
             const [newWordInput, setNewWordInput] = useState(""); // For adding words dynamically
             
@@ -104,9 +119,28 @@
                         return keywords.some(k => searchStr.includes(k.toLowerCase()));
                     };
 
+                    // 1. Cantonese
                     const cantonese = allVoices.filter(v => matches(v, ['HK', 'yue', 'cantonese', '粵']));
+                    
+                    // 2. Mandarin
                     const mandarin = allVoices.filter(v => matches(v, ['CN', 'TW', 'zh', 'mandarin', 'putonghua']) && !matches(v, ['HK', 'yue', 'cantonese', '粵']));
-                    const english = allVoices.filter(v => matches(v, ['en-US', 'US', 'United States']));
+                    
+                    // 3. English (Enhanced Logic)
+                    let englishRaw = allVoices.filter(v => matches(v, ['en-US', 'US', 'United States']));
+                    
+                    // Prioritize standard human voices over novelty voices
+                    // Keywords for good voices: Google, Siri, Samantha, Microsoft, Natural, Premium, Enhanced
+                    const goodKeywords = ['google', 'siri', 'samantha', 'microsoft', 'natural', 'premium', 'enhanced', 'online'];
+                    
+                    englishRaw.sort((a, b) => {
+                        const aName = a.name.toLowerCase();
+                        const bName = b.name.toLowerCase();
+                        const aScore = goodKeywords.some(k => aName.includes(k)) ? 1 : 0;
+                        const bScore = goodKeywords.some(k => bName.includes(k)) ? 1 : 0;
+                        return bScore - aScore; // Higher score first
+                    });
+
+                    const english = englishRaw;
 
                     const filtered = [...cantonese.slice(0, 3), ...mandarin.slice(0, 3), ...english.slice(0, 3)];
                     const unique = Array.from(new Map(filtered.map(v => [v.name, v])).values());
@@ -115,6 +149,7 @@
                     setAvailableVoices(final);
                     
                     if (final.length > 0 && !selectedVoice) {
+                        // Default priority: Cantonese -> Mandarin -> English -> First
                         const defaultVoice = cantonese[0] || mandarin[0] || english[0] || final[0];
                         setSelectedVoice(defaultVoice.name);
                     }
