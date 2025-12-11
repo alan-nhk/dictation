@@ -69,7 +69,7 @@
             
             // Settings
             const [startCountdown, setStartCountdown] = useState(3);
-            const [sameWordInterval, setSameWordInterval] = useState(2);
+            const [sameWordInterval, setSameWordInterval] = useState(2); // Fixed variable name
             const [nextWordInterval, setNextWordInterval] = useState(3);
             const [repeatCount, setRepeatCount] = useState(2);
             const [speechRate, setSpeechRate] = useState(1);
@@ -191,6 +191,12 @@
                 });
             };
 
+            const isEnglishVoice = () => {
+                if (!selectedVoice || availableVoices.length === 0) return false;
+                const v = availableVoices.find(voice => voice.name === selectedVoice);
+                return v && v.lang.toLowerCase().includes('en');
+            };
+
             // --- Core Logic ---
             const startDictation = async (resume = false) => {
                 if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -277,8 +283,16 @@
                     }
 
                     setStatus("finished");
-                    setDisplayMessage("默書完成！");
-                    speakWord("默書完成");
+                    
+                    // Determine final message based on voice language
+                    const currentVoice = availableVoices.find(v => v.name === selectedVoice);
+                    const isEnglish = currentVoice && currentVoice.lang.toLowerCase().includes('en');
+                    
+                    const finishText = isEnglish ? "Dictation finished" : "默書完成！";
+                    const speakText = isEnglish ? "Dictation finished" : "默書完成";
+                    
+                    setDisplayMessage(finishText);
+                    speakWord(speakText);
 
                 } catch (error) {
                     // Logic pauses here, stateRef holds position
@@ -335,11 +349,6 @@
                 
                 // Add to queue
                 stateRef.current.interruptQueue.push(word);
-                
-                // Visual feedback (optional)
-                // We rely on the "Processing..." UI update in loop
-                
-                // If paused, maybe user wants to queue it up for resume? Yes.
             };
 
             const getVoiceLabel = (v) => {
@@ -391,7 +400,9 @@
                                             <div className="inline-flex items-center justify-center p-4 bg-green-500 rounded-full mb-4 shadow-lg">
                                                 <CheckCircle size={48} className="text-white" />
                                             </div>
-                                            <div className="text-3xl font-bold text-white mb-2">默書完成</div>
+                                            <div className="text-3xl font-bold text-white mb-2">
+                                                {isEnglishVoice() ? "Dictation Finished" : "默書完成"}
+                                            </div>
                                             <button onClick={handleReset} className="mt-6 bg-white/20 hover:bg-white/30 text-white px-8 py-2 rounded-full font-medium transition-all">
                                                 返回設定
                                             </button>
