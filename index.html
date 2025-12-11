@@ -2,339 +2,330 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dictation Helper — 淺色現代版</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dictation Helper · 淺色現代UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* Reset & base */
-    *, *::before, *::after {
-      box-sizing: border-box;
+    :root{
+      --bg:#f6f7fb;--card:#ffffff;--text:#0f172a;--muted:#64748b;--primary:#5b6cff;--primary-600:#4a5af7;--primary-700:#3a49df;--ring:#e5e7eb;--shadow:0 10px 30px rgba(30,41,59,.12);
+      --radius:14px;
     }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
-      background: #f9fafb;
-      color: #333;
-      line-height: 1.5;
-    }
-    a { color: inherit; text-decoration: none; }
-    button, input, select, textarea { font-family: inherit; }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;color:var(--text);background:var(--bg)}
+    .wrap{max-width:1080px;margin:0 auto;padding:20px}
+    .topbar{position:sticky;top:0;z-index:40;background:linear-gradient(to bottom, rgba(246,247,251,.95), rgba(246,247,251,.7));backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid var(--ring)}
+    .topbar-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:14px 20px}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:#eef2ff;color:#4338ca;font-weight:800}
+    .title{font-size:20px;font-weight:800}
 
-    /* Layout & wrappers */
-    .container { max-width: 800px; margin: 0 auto; padding: 16px; }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-      padding: 16px;
-      margin-bottom: 24px;
-    }
-    h1, h2, h3 { margin: 0 0 12px; }
-    label { font-weight: 600; }
+    .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
+    @media (max-width: 860px){.grid{grid-template-columns:1fr}}
 
-    textarea {
-      width: 100%;
-      min-height: 140px;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 1rem;
-      resize: vertical;
-    }
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border:1px solid var(--ring)}
+    .card h3{margin:0 0 10px;font-size:15px;letter-spacing:.2px}
 
-    select, input[type=number], input[type=range] {
-      font-size: 1rem;
-    }
+    textarea{width:100%;min-height:320px;border:1.5px solid var(--ring);border-radius:12px;padding:14px 12px;background:#fbfcff;color:var(--text);font-size:16px;line-height:1.6;outline:none;transition:border .2s}
+    textarea:focus{border-color:#c7d2fe;box-shadow:0 0 0 4px rgba(91,108,255,.12)}
+    .counter{font-size:12px;color:var(--muted);margin-top:8px;text-align:right}
 
-    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-    .row > * { flex: 1; }
+    .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+    .row>div{flex:1 1 180px}
 
-    .btn {
-      padding: 10px 18px;
-      border: none;
-      border-radius: 8px;
-      background: #3b82f6;
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: transform 0.1s, box-shadow 0.2s;
-    }
-    .btn:active { transform: scale(0.97); }
-    .btn.secondary { background: #6b7280; }
-    .btn.warn { background: #ef4444; }
+    .select{position:relative}
+    select,input[type=number]{width:100%;padding:12px 14px;border:1.5px solid var(--ring);border-radius:12px;background:#fbfcff;font-size:15px;color:var(--text);outline:none}
+    select:focus,input[type=number]:focus{border-color:#c7d2fe;box-shadow:0 0 0 4px rgba(91,108,255,.12)}
 
-    .grid-buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 8px;
-    }
-    .grid-buttons button {
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      background: #fafafa;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .grid-buttons button:hover {
-      background: #f0f4ff;
-    }
+    .slider{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+    input[type=range]{width:100%}
+    .chip{font-size:12px;color:#4f46e5;background:#eef2ff;border:1px solid #e0e7ff;padding:4px 8px;border-radius:999px;font-weight:700}
 
-    /* Display area for current word */
-    .display-area {
-      text-align: center;
-      padding: 40px 20px;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.12);
-      margin-bottom: 24px;
-      position: relative;
-      overflow: hidden;
-    }
-    .display-word {
-      font-size: 3rem;
-      font-weight: bold;
-      margin-bottom: 16px;
-      color: #1f2937;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .display-msg {
-      font-size: 1.25rem;
-      color: #555;
-      min-height: 1.5em;
-    }
-    .progress-bar {
-      width: 100%;
-      height: 8px;
-      background: #e5e7eb;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 16px;
-    }
-    .progress-bar-inner {
-      height: 100%;
-      background: #3b82f6;
-      width: 0%;
-      transition: width 0.5s ease;
-    }
+    .seg{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+    .seg button{padding:10px 0;border:1.5px solid var(--ring);border-radius:10px;background:#fff;font-weight:700;cursor:pointer;transition:all .15s}
+    .seg button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .seg button:hover{transform:translateY(-1px)}
 
-    @media (max-width: 600px) {
-      .row { flex-direction: column; }
-      .row > * { flex: none; width: 100%; }
-    }
+    .actions{position:sticky;bottom:12px;z-index:30;display:flex;justify-content:center;margin-top:20px}
+    .start{display:flex;align-items:center;gap:10px;background:var(--primary);color:#fff;border:none;padding:14px 22px;border-radius:28px;font-weight:800;box-shadow:0 10px 24px rgba(91,108,255,.35);cursor:pointer;transition:transform .1s, filter .2s}
+    .start:hover{filter:brightness(1.05)}
+    .start:active{transform:translateY(1px)}
+    .btn{padding:12px 16px;border-radius:12px;border:1px solid var(--ring);background:#fff;font-weight:700;cursor:pointer}
+    .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .btn.warn{background:#ef4444;color:#fff;border-color:#ef4444}
+
+    .display{margin-top:18px;background:linear-gradient(180deg,#fff, #f6f7fb);border-radius:22px;border:1px solid var(--ring);box-shadow:var(--shadow);padding:22px;text-align:center}
+    .status{display:inline-flex;gap:8px;align-items:center;border:1px solid #eaeaea;background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted);font-weight:800}
+    .word{font-size:48px;font-weight:900;margin:10px 0 6px;color:#111827;text-shadow:0 2px 10px rgba(0,0,0,.08);min-height:58px}
+    .sub{font-size:16px;color:#6b7280;min-height:22px}
+    .bar{height:10px;background:#edf2ff;border-radius:8px;overflow:hidden;margin-top:16px;border:1px solid #e0e7ff}
+    .bar>i{display:block;height:100%;background:linear-gradient(90deg,#6e7bff,#5b6cff);width:0%;transition:width .45s ease}
+
+    .panel{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media (max-width:900px){.panel{grid-template-columns:1fr}}
+
+    .grid-words{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+    .grid-words button{padding:9px 12px;border:1px dashed #e5e7eb;background:#fff;border-radius:999px;cursor:pointer;transition:all .12s;font-weight:700;color:#374151}
+    .grid-words button:hover{background:#f0f4ff;border-color:#c7d2fe}
+
+    .muted{color:var(--muted)}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1 style="text-align:center; margin-bottom:24px;">Dictation Helper</h1>
-
-    <!-- 輸入區 -->
-    <div class="card">
-      <h2>輸入詞語</h2>
-      <textarea id="inputWords" placeholder="每行一個詞語…"></textarea>
-      <div style="text-align: right; margin-top:8px; font-size:0.9rem; color:#555;" id="countWords">0 個詞語</div>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="badge">🔊 默書幫手</div>
+      <div class="title">淺色現代 UI</div>
+      <div style="margin-left:auto" class="muted" id="readyHint">載入語音中…</div>
     </div>
+  </div>
 
-    <!-- 設定區 -->
-    <div class="card">
-      <h2>設定</h2>
-      <div class="row">
-        <div>
-          <label for="voiceSelect">語音</label><br/>
-          <select id="voiceSelect"></select>
+  <div class="wrap">
+    <div class="grid">
+      <div class="card">
+        <h3>1️⃣ 輸入內容</h3>
+        <textarea id="ta" placeholder="每行一個詞語
+尋寶
+超級市場
+apple
+banana"></textarea>
+        <div class="counter" id="counter">0 個詞語</div>
+      </div>
+
+      <div class="card">
+        <h3>⚙️ 設定參數</h3>
+        <div class="row" style="margin-bottom:10px">
+          <div>
+            <label>語音選擇</label>
+            <div class="select">
+              <select id="selVoice"></select>
+            </div>
+          </div>
         </div>
-        <div>
-          <label for="speechRate">語速 (<span id="rateLabel">1.0</span>x)</label><br/>
-          <input type="range" id="speechRate" min="0.7" max="1.3" step="0.1" value="1.0"/>
+        <div class="row">
+          <div class="slider">
+            <div>
+              <label>語速</label>
+              <input type="range" id="rate" min="0.7" max="1.3" step="0.1" value="1.0" />
+            </div>
+            <span class="chip" id="rateChip">1.0×</span>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="slider">
+            <div>
+              <label>開始前倒數</label>
+              <input type="range" id="countdown" min="0" max="10" step="1" value="3" />
+            </div>
+            <span class="chip" id="cdChip">3 秒</span>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div>
+            <label>同詞間隔</label>
+            <select id="repeatGap"></select>
+          </div>
+          <div>
+            <label>詞語間隔</label>
+            <select id="wordGap"></select>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label>每個詞重複次數</label>
+          <div class="seg" id="segRepeat"></div>
         </div>
       </div>
-      <div class="row" style="margin-top:12px;">
-        <div>
-          <label for="repeatCount">重複次數</label><br/>
-          <select id="repeatCount">
-            <option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option>
-          </select>
-        </div>
-        <div>
-          <label for="sameInterval">同詞間隔 (秒)</label><br/>
-          <select id="sameInterval">
-            <option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option>
-            <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
-          </select>
-        </div>
-        <div>
-          <label for="nextInterval">詞語間隔 (秒)</label><br/>
-          <select id="nextInterval">
-            <option>1</option><option selected>3</option><option>5</option><option>7</option><option>10</option>
-          </select>
-        </div>
+    </div>
+
+    <div class="actions">
+      <button id="btnStart" class="start">▶ 開始默書</button>
+    </div>
+
+    <div id="display" class="display" style="display:none">
+      <div class="status" id="status">待命</div>
+      <div class="word" id="bigWord"></div>
+      <div class="sub" id="subText"></div>
+      <div class="bar"><i id="barInner"></i></div>
+    </div>
+
+    <div class="panel">
+      <div class="card">
+        <h3>✨ 快速插播（點擊任何詞語）</h3>
+        <div id="grid" class="grid-words"></div>
+        <div class="muted" style="margin-top:8px">插播會立即打斷當前朗讀；插播完成後會按原本進度繼續（由當前重複次數的下一次開始）。</div>
       </div>
-    </div>
-
-    <!-- 控制按鈕 -->
-    <div class="card" style="text-align:center;">
-      <button id="startBtn" class="btn">開始默書</button>
-      <button id="pauseBtn" class="btn secondary" style="display:none;">暫停</button>
-      <button id="resumeBtn" class="btn secondary" style="display:none;">繼續</button>
-      <button id="stopBtn" class="btn warn" style="display:none;">停止</button>
-      <button id="resetBtn" class="btn secondary">重設</button>
-    </div>
-
-    <!-- 顯示區 -->
-    <div class="display-area" style="display:none;">
-      <div class="display-word" id="displayWord"></div>
-      <div class="display-msg" id="displayMsg"></div>
-      <div class="progress-bar"><div class="progress-bar-inner" id="progressInner"></div></div>
-    </div>
-
-    <!-- 快速重播／插播詞語按鈕 -->
-    <div class="card">
-      <h2>快速插播 / 重播</h2>
-      <div id="gridWords" class="grid-buttons"></div>
+      <div class="card">
+        <h3>🎛 控制</h3>
+        <div class="row">
+          <button class="btn" id="btnPause" disabled>⏸ 暫停</button>
+          <button class="btn" id="btnResume" disabled>▶ 繼續</button>
+          <button class="btn warn" id="btnStop" disabled>■ 停止</button>
+          <button class="btn" id="btnReset">↻ 重設</button>
+        </div>
+        <div class="muted" style="margin-top:8px">設定會自動保存；支援螢幕常亮（Wake Lock）如瀏覽器可用。</div>
+      </div>
     </div>
   </div>
 
   <script>
-    // --- util ---
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    // ====== DOM ======
+    const ta = document.getElementById('ta');
+    const counter = document.getElementById('counter');
+    const selVoice = document.getElementById('selVoice');
+    const rate = document.getElementById('rate');
+    const rateChip = document.getElementById('rateChip');
+    const countdown = document.getElementById('countdown');
+    const cdChip = document.getElementById('cdChip');
+    const repeatGap = document.getElementById('repeatGap');
+    const wordGap = document.getElementById('wordGap');
+    const segRepeat = document.getElementById('segRepeat');
+    const grid = document.getElementById('grid');
+    const readyHint = document.getElementById('readyHint');
 
-    // state
-    let words = [];
-    let queue = []; // 插播 queue
-    let idx = 0;
-    let repeatIndex = 1;
-    let isRunning = false;
-    let isPaused = false;
-    let stopFlag = false;
+    const btnStart = document.getElementById('btnStart');
+    const btnPause = document.getElementById('btnPause');
+    const btnResume = document.getElementById('btnResume');
+    const btnStop = document.getElementById('btnStop');
+    const btnReset = document.getElementById('btnReset');
 
-    // DOM
-    const inputWords = document.getElementById('inputWords');
-    const countWords = document.getElementById('countWords');
-    const voiceSelect = document.getElementById('voiceSelect');
-    const speechRate = document.getElementById('speechRate');
-    const rateLabel = document.getElementById('rateLabel');
-    const repeatCount = document.getElementById('repeatCount');
-    const sameInterval = document.getElementById('sameInterval');
-    const nextInterval = document.getElementById('nextInterval');
+    const display = document.getElementById('display');
+    const statusEl = document.getElementById('status');
+    const bigWord = document.getElementById('bigWord');
+    const subText = document.getElementById('subText');
+    const barInner = document.getElementById('barInner');
 
-    const startBtn = document.getElementById('startBtn');
-    const pauseBtn = document.getElementById('pauseBtn');
-    const resumeBtn = document.getElementById('resumeBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const resetBtn = document.getElementById('resetBtn');
+    // ====== State ======
+    const SETTINGS_KEY = 'dictation_modern_v1';
+    let voices = [];
+    let list = [];
+    let repeatN = 2;
+    let wakeLock = null;
 
-    const displayArea = document.querySelector('.display-area');
-    const displayWord = document.getElementById('displayWord');
-    const displayMsg = document.getElementById('displayMsg');
-    const progressInner = document.getElementById('progressInner');
-    const gridWords = document.getElementById('gridWords');
+    // running
+    let running = false, paused = false, stopFlag = false;
+    let wordIdx = 0, repeatIdx = 1;
+    const q = []; // priority queue
 
-    // load voices
+    // ====== Helpers ======
+    const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+    const wordsFromText = (t)=> t.split(/\n|,|，|;|；/).map(s=>s.trim()).filter(Boolean);
+
+    function save(){
+      const data = { text: ta.value, rate: rate.value, cd: countdown.value, rg: repeatGap.value, wg: wordGap.value, rn: repeatN, v: selVoice.value };
+      try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(data)); }catch{}
+    }
+    function load(){
+      try{ const raw = localStorage.getItem(SETTINGS_KEY); if(!raw) return; const d = JSON.parse(raw);
+        ta.value = d.text ?? ta.value; rate.value = d.rate ?? rate.value; countdown.value = d.cd ?? countdown.value; repeatGap.value = d.rg ?? repeatGap.value; wordGap.value = d.wg ?? wordGap.value; repeatN = d.rn ?? repeatN; }
+      catch{}
+      rateChip.textContent = rate.value + '×';
+      cdChip.textContent = countdown.value + ' 秒';
+      updateList();
+      highlightSeg();
+    }
+
+    function updateList(){ list = wordsFromText(ta.value); counter.textContent = list.length + ' 個詞語'; renderGrid(); save(); }
+    function renderGrid(){
+      grid.innerHTML = '';
+      list.forEach(w=>{
+        const b = document.createElement('button');
+        b.textContent = w; b.onclick = ()=>{ if(running){ q.unshift(w); try{ speechSynthesis.cancel(); }catch{} status('插播：'+w); } };
+        grid.appendChild(b);
+      })
+    }
+
+    function status(s){ statusEl.textContent = s; }
+
+    // selects
+    for(let i=1;i<=10;i++){ const o=document.createElement('option');o.value=i;o.textContent=i+' 秒'; repeatGap.appendChild(o.cloneNode(true)); wordGap.appendChild(o); }
+    repeatGap.value = 2; wordGap.value = 3;
+
+    // repeat segment
+    for(let i=1;i<=5;i++){ const b=document.createElement('button'); b.textContent=i; b.onclick=()=>{ repeatN=i; highlightSeg(); save(); }; segRepeat.appendChild(b) }
+    function highlightSeg(){ [...segRepeat.children].forEach((b,i)=> b.className = ' '+(i+1===repeatN?'active':'')); }
+
+    // sliders label
+    rate.addEventListener('input', ()=>{ rateChip.textContent = rate.value+'×'; save(); })
+    countdown.addEventListener('input', ()=>{ cdChip.textContent = countdown.value+' 秒'; save(); })
+    repeatGap.addEventListener('change', save); wordGap.addEventListener('change', save);
+
+    ta.addEventListener('input', updateList);
+
+    // voices
     function loadVoices(){
       const vs = speechSynthesis.getVoices();
-      voiceSelect.innerHTML = '';
-      vs.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v.name;
-        opt.textContent = `${v.name} (${v.lang})`;
-        voiceSelect.appendChild(opt);
-      });
-      if (vs.length) voiceSelect.value = vs[0].name;
+      if(!vs.length) return;
+      voices = vs;
+      selVoice.innerHTML = '';
+      vs.forEach(v=>{ const o=document.createElement('option'); o.value=v.name; o.textContent=`${v.name} (${v.lang})`; selVoice.appendChild(o) })
+      readyHint.textContent = '已就緒';
+      try{ const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}'); if(saved && saved.v){ selVoice.value = saved.v; } }catch{}
     }
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices; loadVoices();
 
-    // update word list & grid
-    function updateWords(){
-      const list = inputWords.value.split(/\n|,|，|;/).map(w => w.trim()).filter(w => w);
-      words = list;
-      countWords.textContent = `${words.length} 個詞語`;
-      renderGrid();
-    }
-    inputWords.addEventListener('input', updateWords);
-    updateWords();
-
-    function renderGrid(){
-      gridWords.innerHTML = '';
-      words.forEach(w => {
-        const btn = document.createElement('button');
-        btn.textContent = w;
-        btn.onclick = () => {
-          if (isRunning){
-            queue.unshift(w);
-            // 若正播一句，停止並插播
-            speechSynthesis.cancel();
-          }
-        };
-        gridWords.appendChild(btn);
-      });
-    }
+    // Wake Lock
+    async function lock(){ if(!('wakeLock' in navigator)) return; try{ wakeLock = await navigator.wakeLock.request('screen'); }catch{} }
+    async function unlock(){ try{ if(wakeLock) await wakeLock.release(); wakeLock=null; }catch{} }
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && running && !wakeLock) lock(); });
 
     function speak(text){
-      return new Promise((resolve) => {
+      return new Promise(res=>{
         const u = new SpeechSynthesisUtterance(text);
-        const vs = speechSynthesis.getVoices();
-        const v = vs.find(v => v.name === voiceSelect.value);
-        if (v) u.voice = v;
-        u.rate = parseFloat(speechRate.value);
-        u.onend = resolve;
-        u.onerror = resolve;
-        speechSynthesis.speak(u);
-      });
+        const v = voices.find(x=>x.name===selVoice.value);
+        if(v) u.voice = v;
+        u.rate = parseFloat(rate.value)||1.0; u.onend=res; u.onerror=res; speechSynthesis.speak(u);
+      })
     }
 
-    async function dictationLoop(){
-      isRunning = true;
-      startBtn.style.display = 'none';
-      pauseBtn.style.display = '';
-      stopBtn.style.display = '';
-      displayArea.style.display = '';
+    // ====== Engine ======
+    async function run(){
+      if(!list.length){ alert('請先輸入詞語'); return }
+      running = true; paused=false; stopFlag=false; wordIdx=0; repeatIdx=1;
+      btnStart.disabled=true; btnPause.disabled=false; btnStop.disabled=false; btnReset.disabled=true; btnResume.disabled=true; display.style.display='block'; lock();
 
-      for(let i = 0; i < words.length; i++){
-        idx = i;
-        await speakWord(words[i]);
-        if (stopFlag) break;
-      }
+      // countdown
+      let cd = parseInt(countdown.value)||0; for(let t=cd;t>0;t--){ status('倒數 '+t); bigWord.textContent=''; barInner.style.width='0%'; await sleep(1000); if(stopFlag) return finish(); }
 
-      finishDictation();
-    }
-
-    async function speakWord(word){
-      const rep = parseInt(repeatCount.value);
-      const si = parseInt(sameInterval.value) * 1000;
-      const ni = parseInt(nextInterval.value) * 1000;
-
-      for(let r = 1; r <= rep; r++){
-        displayWord.textContent = word;
-        displayMsg.textContent = `第 ${r} 次`;
-        await speak(word);
-        if (stopFlag) return;
-        if (r < rep){
-          displayMsg.textContent = `重複中… 等 ${sameInterval.value} 秒`;
-          await sleep(si);
+      status('開始');
+      for(wordIdx=0; wordIdx<list.length; wordIdx++){
+        const w = list[wordIdx];
+        bigWord.textContent = w; repeatIdx = 1;
+        while(repeatIdx<=repeatN){
+          subText.textContent = `第 ${repeatIdx} 次 (語速 ${rate.value}×)`;
+          await speak(w); if(stopFlag) return finish();
+          if(q.length){ await processQueue(); }
+          if(repeatIdx<repeatN){ await waitWithPause(parseInt(repeatGap.value)*1000); if(stopFlag) return finish(); }
+          repeatIdx++;
         }
-        if (queue.length) break;
+        // 進度
+        barInner.style.width = (((wordIdx+1)/Math.max(list.length,1))*100).toFixed(1)+'%';
+        if(wordIdx<list.length-1){ subText.textContent = `下一個前等待 ${wordGap.value} 秒`; await waitWithPause(parseInt(wordGap.value)*1000); if(stopFlag) return finish(); }
       }
-      if (stopFlag) return;
-
-      displayMsg.textContent = `等 ${nextInterval.value} 秒`;
-      await sleep(ni);
+      status('完成'); subText.textContent='全部完成'; btnReset.disabled=false; btnPause.disabled=true; btnStop.disabled=true; btnResume.disabled=true; running=false; unlock();
     }
 
-    startBtn.onclick = () => { stopFlag = false; dictationLoop(); };
-    stopBtn.onclick = () => { stopFlag = true; speechSynthesis.cancel(); resetState(); };
-    resetBtn.onclick = () => { stopFlag = true; speechSynthesis.cancel(); resetState(); };
-
-    function resetState(){
-      isRunning = false;
-      startBtn.style.display = '';
-      pauseBtn.style.display = 'none';
-      resumeBtn.style.display = 'none';
-      stopBtn.style.display = 'none';
-      displayArea.style.display = 'none';
-      displayWord.textContent = '';
-      displayMsg.textContent = '';
-      progressInner.style.width = '0%';
+    async function processQueue(){
+      while(q.length){ const w=q.shift(); status('插播：'+w); bigWord.textContent=w; for(let r=1;r<=repeatN;r++){ subText.textContent = `插播第 ${r} 次`; await speak(w); if(stopFlag) return; if(r<repeatN) await waitWithPause(parseInt(repeatGap.value)*1000); } }
+      status('返回主線');
     }
+
+    async function waitWithPause(ms){
+      const end = Date.now()+ms; while(Date.now()<end){ if(stopFlag) return; if(paused){ await sleep(130); } else { await sleep(35); } }
+    }
+
+    function finish(){ running=false; btnStart.disabled=false; btnPause.disabled=true; btnResume.disabled=true; btnStop.disabled=true; btnReset.disabled=false; unlock(); status('已停止'); }
+
+    // ====== Events ======
+    btnStart.addEventListener('click', run);
+    btnPause.addEventListener('click', ()=>{ if(!running) return; paused=true; btnPause.disabled=true; btnResume.disabled=false; status('已暫停'); speechSynthesis.pause(); })
+    btnResume.addEventListener('click', ()=>{ if(!running) return; paused=false; btnPause.disabled=false; btnResume.disabled=true; status('繼續'); speechSynthesis.resume(); })
+    btnStop.addEventListener('click', ()=>{ stopFlag=true; speechSynthesis.cancel(); finish(); })
+    btnReset.addEventListener('click', ()=>{ if(!confirm('確定重設？會清除已存設定與文字')) return; speechSynthesis.cancel(); stopFlag=true; running=false; unlock(); localStorage.removeItem(SETTINGS_KEY); selVoice.selectedIndex=0; rate.value='1.0'; countdown.value='3'; repeatGap.value='2'; wordGap.value='3'; repeatN=2; rateChip.textContent='1.0×'; cdChip.textContent='3 秒'; ta.value=''; updateList(); highlightSeg(); display.style.display='none'; status('待命'); subText.textContent=''; barInner.style.width='0%'; })
+
+    selVoice.addEventListener('change', save);
+
+    // init
+    updateList(); load();
   </script>
 </body>
 </html>
