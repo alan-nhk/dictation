@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學校生詞卡 (School Words)</title>
+    <title>學校生詞卡 (DIY版)</title>
     <style>
         :root {
             --primary-color: #4facfe;
@@ -16,21 +16,90 @@
         body {
             font-family: 'Comic Sans MS', 'Chalkboard SE', '微軟正黑體', sans-serif;
             background-image: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .container {
             text-align: center;
-            width: 90%;
+            width: 100%;
             max-width: 600px;
         }
 
+        /* 兩種模式切換 */
+        .mode-section {
+            display: none; /* 預設隱藏，由 JS 控制顯示 */
+            animation: fadeIn 0.5s;
+        }
+
+        .mode-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 編輯區樣式 */
+        .edit-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: left;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 15px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .helper-text {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* 學習卡樣式 (保持原樣但微調) */
         .card {
             background: var(--card-bg);
             border-radius: 30px;
@@ -38,17 +107,7 @@
             box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07);
             position: relative;
             transition: transform 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-        }
-
-        h1 {
-            color: #555;
-            font-size: 1.5rem;
-            margin-bottom: 30px;
-            opacity: 0.8;
+            margin-bottom: 20px;
         }
 
         /* 音節顯示區 */
@@ -70,23 +129,9 @@
             user-select: none;
         }
 
-        /* 奇數音節顏色 */
-        .syllable:nth-child(odd) {
-            color: #2b5876;
-            background-color: #e6f1f9;
-        }
-
-        /* 偶數音節顏色 */
-        .syllable:nth-child(even) {
-            color: #d9475c;
-            background-color: #ffe6e9;
-        }
-
-        /* 點擊音節時的特效 */
-        .syllable:active {
-            transform: scale(0.95);
-            background-color: #ffff00;
-        }
+        .syllable:nth-child(odd) { color: #2b5876; background-color: #e6f1f9; }
+        .syllable:nth-child(even) { color: #d9475c; background-color: #ffe6e9; }
+        .syllable:active { transform: scale(0.95); background-color: #ffff00; }
 
         .chinese-meaning {
             font-size: 1.8rem;
@@ -99,128 +144,256 @@
             display: flex;
             justify-content: center;
             gap: 20px;
+            flex-wrap: wrap;
         }
 
         .btn {
             border: none;
-            padding: 15px 30px;
+            padding: 12px 25px;
             border-radius: 50px;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: all 0.2s;
             font-weight: bold;
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-        }
-
-        .btn-speak {
-            background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+            gap: 8px;
             color: white;
         }
 
-        .btn-next {
-            background: linear-gradient(to right, #fa709a 0%, #fee140 100%);
-            color: white;
-        }
+        .btn:active { transform: scale(0.95); }
+        
+        .btn-primary { background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%); }
+        .btn-success { background: linear-gradient(to right, #43e97b 0%, #38f9d7 100%); color: #333; }
+        .btn-warning { background: linear-gradient(to right, #fa709a 0%, #fee140 100%); }
+        .btn-secondary { background: #eee; color: #555; }
 
-        .progress {
+        .edit-btn-container {
             margin-top: 20px;
-            color: #fff;
-            font-size: 1rem;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
 
         /* 手機版調整 */
         @media (max-width: 600px) {
-            .syllable { font-size: 2.5rem; }
+            .syllable { font-size: 2.2rem; }
             .card { padding: 30px 15px; }
+            .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1 id="title">🏫 Places at school</h1>
         
-        <div class="card">
-            <div class="chinese-meaning" id="chineseText">準備好了嗎？</div>
+        <!-- 1. 編輯與設定模式 -->
+        <div id="editMode" class="mode-section active">
+            <h1 style="color:white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">📝 設定生詞與語音</h1>
             
-            <div class="syllable-container" id="syllableBox" onclick="speakCurrentWord()">
-                <span class="syllable" style="background:none; color:#333;">Start!</span>
-            </div>
+            <div class="edit-card">
+                <div class="input-group">
+                    <label for="wordInput">輸入生詞 (一行一個)</label>
+                    <div class="helper-text">格式：音節-音節 : 中文意思</div>
+                    <textarea id="wordInput" placeholder="ex-pe-ri-ment : 實驗&#10;class-room : 教室"></textarea>
+                </div>
 
-            <div class="controls">
-                <button class="btn btn-speak" onclick="speakCurrentWord()">
-                    <span>🔊</span> 讀音
-                </button>
-                <button class="btn btn-next" onclick="nextWord()">
-                    下一個 <span>➡</span>
+                <div class="input-group">
+                    <label for="voiceSelect">選擇發音 (Voice)</label>
+                    <select id="voiceSelect">
+                        <option value="">載入語音中...</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="rateRange">朗讀速度 (Speed): <span id="rateValue">0.8</span></label>
+                    <input type="range" id="rateRange" min="0.5" max="1.5" step="0.1" value="0.8">
+                </div>
+
+                <button class="btn btn-success" onclick="startLearning()" style="width:100%; justify-content: center;">
+                    開始學習 (Start) ▶
                 </button>
             </div>
         </div>
 
-        <div class="progress" id="progressText">點擊「下一個」開始學習</div>
+        <!-- 2. 學習卡片模式 -->
+        <div id="learningMode" class="mode-section">
+            <h1 id="title">🏫 學習中</h1>
+            
+            <div class="card">
+                <div class="chinese-meaning" id="chineseText">準備好了嗎？</div>
+                
+                <div class="syllable-container" id="syllableBox" onclick="speakCurrentWord()">
+                    <span class="syllable" style="background:none; color:#333;">Start!</span>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" onclick="speakCurrentWord()">
+                        <span>🔊</span> 讀音
+                    </button>
+                    <button class="btn btn-warning" onclick="nextWord()">
+                        下一個 <span>➡</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="edit-btn-container">
+                <button class="btn btn-secondary" onclick="showEditMode()" style="background: rgba(255,255,255,0.3); color: white;">
+                    ✏️ 修改生詞 / 設定
+                </button>
+            </div>
+            <div style="margin-top:10px; color: white;" id="progressText"></div>
+        </div>
+
     </div>
 
     <script>
-        // 這是您的生詞資料庫，已經幫您分好音節了
-        const wordList = [
-            { id: 1, text: "class-room", chinese: "教室 (classroom)", full: "classroom" },
-            { id: 2, text: "mu-sic room", chinese: "音樂室 (music room)", full: "music room" },
-            { id: 3, text: "com-pu-ter room", chinese: "電腦室 (computer room)", full: "computer room" },
-            { id: 4, text: "art room", chinese: "美術室 (art room)", full: "art room" },
-            { id: 5, text: "li-bra-ry", chinese: "圖書館 (library)", full: "library" },
-            { id: 6, text: "toi-lets", chinese: "廁所 (toilets)", full: "toilets" },
-            { id: 7, text: "wash-rooms", chinese: "洗手間 (washrooms)", full: "washrooms" },
-            { id: 8, text: "lift", chinese: "電梯 (lift)", full: "lift" },
-            { id: 9, text: "play-ground", chinese: "操場 (playground)", full: "playground" },
-            { id: 10, text: "tuck shop", chinese: "小賣部 (tuck shop)", full: "tuck shop" },
-            { id: 11, text: "gar-den", chinese: "花園 (garden)", full: "garden" },
-            // 加一些動作
-            { id: 12, text: "have les-sons", chinese: "上課 (have lessons)", full: "have lessons" },
-            { id: 13, text: "paint pic-tures", chinese: "畫畫 (paint pictures)", full: "paint pictures" }
-        ];
+        // 預設資料
+        const defaultData = `ex-pe-ri-ment : 實驗
+class-room : 教室
+mu-sic room : 音樂室
+com-pu-ter room : 電腦室
+li-bra-ry : 圖書館
+play-ground : 操場
+wash-rooms : 洗手間`;
 
-        let currentIndex = -1; // -1 表示還沒開始
+        let wordList = [];
+        let currentIndex = -1;
+        let selectedVoice = null;
+        
+        // 初始化
+        window.onload = function() {
+            document.getElementById('wordInput').value = defaultData;
+            loadVoices();
+            
+            // 監聽語速拉桿變化
+            document.getElementById('rateRange').addEventListener('input', function(e) {
+                document.getElementById('rateValue').innerText = e.target.value;
+            });
+        };
 
+        // 1. 載入語音列表
+        function loadVoices() {
+            const voiceSelect = document.getElementById('voiceSelect');
+            
+            function populate() {
+                const voices = window.speechSynthesis.getVoices();
+                voiceSelect.innerHTML = '';
+                
+                // 篩選出英文語音，如果沒有英文就顯示全部
+                const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+                const voicesToShow = englishVoices.length > 0 ? englishVoices : voices;
+
+                voicesToShow.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    option.value = index; // 用 index 比較簡單定位
+                    // 嘗試預選 Google US English 或 Microsoft Zira
+                    if (voice.name.includes('Google US') || voice.name.includes('Zira')) {
+                        option.selected = true;
+                    }
+                    option.dataVoice = voice; // 暫存物件 (雖然 select value 存不了物件)
+                    voiceSelect.appendChild(option);
+                });
+
+                if (voices.length === 0) {
+                    const option = document.createElement('option');
+                    option.textContent = "未偵測到語音，將使用預設值";
+                    voiceSelect.appendChild(option);
+                }
+            }
+
+            populate();
+            // 某些瀏覽器需要這個事件才能抓到語音
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = populate;
+            }
+        }
+
+        // 2. 解析輸入並開始學習
+        function startLearning() {
+            const rawInput = document.getElementById('wordInput').value;
+            const lines = rawInput.split('\n');
+            wordList = [];
+
+            lines.forEach(line => {
+                // 支援中文冒號或英文冒號
+                let separator = line.includes(':') ? ':' : '：';
+                if (!line.includes(separator)) return; // 跳過格式錯誤的行
+
+                const [syllablePart, meaningPart] = line.split(separator);
+                if (syllablePart && meaningPart) {
+                    const cleanSyllable = syllablePart.trim();
+                    const cleanMeaning = meaningPart.trim();
+                    const fullWord = cleanSyllable.replace(/-/g, ''); // 去掉 - 變成完整單字
+                    
+                    wordList.push({
+                        text: cleanSyllable,
+                        chinese: cleanMeaning,
+                        full: fullWord
+                    });
+                }
+            });
+
+            if (wordList.length === 0) {
+                alert("請至少輸入一個生詞！格式：word : 意思");
+                return;
+            }
+
+            // 獲取選擇的語音物件
+            const voices = window.speechSynthesis.getVoices();
+            // 這裡重新篩選一次以確保 index 對應正確 (如果做了 filter)
+            const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+            const voicesToShow = englishVoices.length > 0 ? englishVoices : voices;
+            
+            const selectedIndex = document.getElementById('voiceSelect').selectedIndex;
+            if (selectedIndex >= 0 && selectedIndex < voicesToShow.length) {
+                selectedVoice = voicesToShow[selectedIndex];
+            } else {
+                selectedVoice = null;
+            }
+
+            // 切換介面
+            document.getElementById('editMode').classList.remove('active');
+            document.getElementById('learningMode').classList.add('active');
+            
+            currentIndex = 0;
+            updateDisplay();
+            // 預讀第一個字 (可能被瀏覽器阻擋，視情況)
+            setTimeout(speakCurrentWord, 500);
+        }
+
+        // 3. 返回編輯模式
+        function showEditMode() {
+            document.getElementById('learningMode').classList.remove('active');
+            document.getElementById('editMode').classList.add('active');
+            window.speechSynthesis.cancel();
+        }
+
+        // 4. 下一個字
         function nextWord() {
             currentIndex++;
             if (currentIndex >= wordList.length) {
-                currentIndex = 0; // 如果到底了，回到第一個
+                currentIndex = 0;
             }
             updateDisplay();
-            // 自動讀出聲音 (部分瀏覽器可能阻擋自動播放，需使用者先互動過)
-            setTimeout(speakCurrentWord, 500); 
+            setTimeout(speakCurrentWord, 300);
         }
 
+        // 5. 更新畫面顯示
         function updateDisplay() {
             const wordData = wordList[currentIndex];
             const syllableBox = document.getElementById('syllableBox');
             const chineseText = document.getElementById('chineseText');
             const progressText = document.getElementById('progressText');
 
-            // 更新中文
             chineseText.innerText = wordData.chinese;
-
-            // 更新進度
             progressText.innerText = `單字 ${currentIndex + 1} / ${wordList.length}`;
-
-            // 清空舊的音節
             syllableBox.innerHTML = '';
 
-            // 處理音節顯示
-            // 我們用空格分開單字，用 "-" 分開音節
-            // 例如 "com-pu-ter room" -> 先分開成 ["com-pu-ter", "room"]
+            // 處理空格 (片語) 和連字號 (音節)
+            // 邏輯：先用空格切開單字，再用連字號切開音節
             const parts = wordData.text.split(' ');
             
             parts.forEach((part, partIndex) => {
-                // 再把每個部分切成音節
                 const syllables = part.split('-');
                 
                 syllables.forEach((syl) => {
@@ -230,43 +403,39 @@
                     syllableBox.appendChild(span);
                 });
 
-                // 如果這不是最後一個單字，加一個空格的分隔符（視覺上的空格）
                 if (partIndex < parts.length - 1) {
                     const space = document.createElement('span');
-                    space.style.width = "20px"; // 空格寬度
+                    space.style.width = "20px";
                     syllableBox.appendChild(space);
                 }
             });
         }
 
+        // 6. 發音邏輯
         function speakCurrentWord() {
-            if (currentIndex === -1) {
-                nextWord();
-                return;
-            }
+            if (wordList.length === 0) return;
 
             const wordData = wordList[currentIndex];
-            
-            // 使用瀏覽器內建語音
             const utterance = new SpeechSynthesisUtterance(wordData.full);
-            utterance.lang = 'en-US'; // 設定為美式英文
-            utterance.rate = 0.8;     // 語速稍微放慢，適合小朋友
-            utterance.pitch = 1.1;    // 語調稍微提高一點點，比較活潑
             
-            // 嘗試解決部分瀏覽器發音不出來的問題
+            // 套用使用者設定
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            } else {
+                utterance.lang = 'en-US'; 
+            }
+            
+            const rate = document.getElementById('rateRange').value;
+            utterance.rate = parseFloat(rate);
+
             window.speechSynthesis.cancel(); 
             window.speechSynthesis.speak(utterance);
 
-            // 視覺回饋：讓卡片稍微跳動一下
+            // 動畫
             const card = document.querySelector('.card');
             card.style.transform = "scale(1.02)";
-            setTimeout(() => {
-                card.style.transform = "scale(1)";
-            }, 200);
+            setTimeout(() => { card.style.transform = "scale(1)"; }, 200);
         }
-
-        // 初始化語音功能 (解決某些瀏覽器第一次沒聲音的問題)
-        window.speechSynthesis.getVoices();
     </script>
 </body>
 </html>
