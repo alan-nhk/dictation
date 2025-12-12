@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學校生詞卡 (DIY版)</title>
+    <title>學校生詞卡 (極簡版)</title>
     <style>
         :root {
             --primary-color: #4facfe;
@@ -97,6 +97,10 @@
             font-size: 0.9rem;
             color: #888;
             margin-top: 5px;
+            line-height: 1.5;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
         }
 
         /* 學習卡樣式 (保持原樣但微調) */
@@ -108,6 +112,10 @@
             position: relative;
             transition: transform 0.3s ease;
             margin-bottom: 20px;
+            min-height: 300px; /* 確保高度足夠，視覺上更舒服 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         /* 音節顯示區 */
@@ -116,14 +124,16 @@
             justify-content: center;
             flex-wrap: wrap;
             gap: 8px;
-            margin: 30px 0;
+            margin: 20px 0 40px 0; /* 增加下方間距 */
             cursor: pointer;
+            flex-grow: 1; /* 讓音節區塊佔據中間空間 */
+            align-items: center;
         }
 
         .syllable {
-            font-size: 3.5rem;
+            font-size: 3.8rem; /* 字體稍微加大 */
             font-weight: bold;
-            padding: 5px 10px;
+            padding: 8px 15px;
             border-radius: 15px;
             transition: all 0.2s;
             user-select: none;
@@ -136,8 +146,9 @@
         .chinese-meaning {
             font-size: 1.8rem;
             color: #666;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
             font-weight: 500;
+            min-height: 1.8rem; /* 即使隱藏也保留一點空間避免跳動過大? 不，隱藏比較好 */
         }
 
         .controls {
@@ -145,6 +156,7 @@
             justify-content: center;
             gap: 20px;
             flex-wrap: wrap;
+            margin-top: auto; /* 推到底部 */
         }
 
         .btn {
@@ -175,8 +187,8 @@
 
         /* 手機版調整 */
         @media (max-width: 600px) {
-            .syllable { font-size: 2.2rem; }
-            .card { padding: 30px 15px; }
+            .syllable { font-size: 2.5rem; }
+            .card { padding: 30px 15px; min-height: 250px; }
             .btn { width: 100%; justify-content: center; }
         }
     </style>
@@ -187,13 +199,19 @@
         
         <!-- 1. 編輯與設定模式 -->
         <div id="editMode" class="mode-section active">
-            <h1 style="color:white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">📝 設定生詞與語音</h1>
+            <h1 style="color:white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">📝 設定生詞</h1>
             
             <div class="edit-card">
                 <div class="input-group">
-                    <label for="wordInput">輸入生詞 (一行一個)</label>
-                    <div class="helper-text">格式：音節-音節 : 中文意思</div>
-                    <textarea id="wordInput" placeholder="ex-pe-ri-ment : 實驗&#10;class-room : 教室"></textarea>
+                    <label for="wordInput">輸入生詞 (一行一個，不需中文)</label>
+                    <div class="helper-text">
+                        <b>🔥 極簡模式：</b><br>
+                        直接輸入英文即可，系統會自動拆音節。<br>
+                        例如：<br>
+                        <code>experiment</code><br>
+                        <code>classroom</code>
+                    </div>
+                    <textarea id="wordInput" placeholder="experiment&#10;classroom&#10;music room"></textarea>
                 </div>
 
                 <div class="input-group">
@@ -219,7 +237,8 @@
             <h1 id="title">🏫 學習中</h1>
             
             <div class="card">
-                <div class="chinese-meaning" id="chineseText">準備好了嗎？</div>
+                <!-- 中文意思 (如果有輸入才會顯示，沒有則隱藏) -->
+                <div class="chinese-meaning" id="chineseText" style="display:none;"></div>
                 
                 <div class="syllable-container" id="syllableBox" onclick="speakCurrentWord()">
                     <span class="syllable" style="background:none; color:#333;">Start!</span>
@@ -246,14 +265,14 @@
     </div>
 
     <script>
-        // 預設資料
-        const defaultData = `ex-pe-ri-ment : 實驗
-class-room : 教室
-mu-sic room : 音樂室
-com-pu-ter room : 電腦室
-li-bra-ry : 圖書館
-play-ground : 操場
-wash-rooms : 洗手間`;
+        // 預設資料 (純英文，不帶中文解釋)
+        const defaultData = `experiment
+classroom
+music room
+computer room
+library
+playground
+washrooms`;
 
         let wordList = [];
         let currentIndex = -1;
@@ -270,6 +289,32 @@ wash-rooms : 洗手間`;
             });
         };
 
+        // -----------------------
+        // 核心功能：自動音節拆解
+        // -----------------------
+        function autoHyphenate(text) {
+            // 如果使用者已經手動輸入了 "-"，我們就尊重使用者的決定
+            if (text.includes('-')) return text;
+
+            // 如果是片語 (有空格)，分開處理每個字
+            if (text.includes(' ')) {
+                return text.split(' ').map(word => autoHyphenate(word)).join(' ');
+            }
+
+            const word = text.toLowerCase();
+            if (word.length <= 4) return text; // 太短的字通常不用拆
+
+            // 使用正則表達式進行推估
+            const syllableRegex = /[^aeiouy]*[aeiouy]+(?:[^aeiouy]*$|[^aeiouy](?=[^aeiouy]))?/gi;
+            const chunks = word.match(syllableRegex);
+
+            if (chunks && chunks.length > 1) {
+                return chunks.join('-');
+            } else {
+                return text;
+            }
+        }
+
         // 1. 載入語音列表
         function loadVoices() {
             const voiceSelect = document.getElementById('voiceSelect');
@@ -278,19 +323,17 @@ wash-rooms : 洗手間`;
                 const voices = window.speechSynthesis.getVoices();
                 voiceSelect.innerHTML = '';
                 
-                // 篩選出英文語音，如果沒有英文就顯示全部
+                // 篩選出英文語音
                 const englishVoices = voices.filter(v => v.lang.startsWith('en'));
                 const voicesToShow = englishVoices.length > 0 ? englishVoices : voices;
 
                 voicesToShow.forEach((voice, index) => {
                     const option = document.createElement('option');
                     option.textContent = `${voice.name} (${voice.lang})`;
-                    option.value = index; // 用 index 比較簡單定位
-                    // 嘗試預選 Google US English 或 Microsoft Zira
+                    option.value = index;
                     if (voice.name.includes('Google US') || voice.name.includes('Zira')) {
                         option.selected = true;
                     }
-                    option.dataVoice = voice; // 暫存物件 (雖然 select value 存不了物件)
                     voiceSelect.appendChild(option);
                 });
 
@@ -302,7 +345,6 @@ wash-rooms : 洗手間`;
             }
 
             populate();
-            // 某些瀏覽器需要這個事件才能抓到語音
             if (speechSynthesis.onvoiceschanged !== undefined) {
                 speechSynthesis.onvoiceschanged = populate;
             }
@@ -315,18 +357,32 @@ wash-rooms : 洗手間`;
             wordList = [];
 
             lines.forEach(line => {
-                // 支援中文冒號或英文冒號
-                let separator = line.includes(':') ? ':' : '：';
-                if (!line.includes(separator)) return; // 跳過格式錯誤的行
+                line = line.trim(); // 去除前後空白
+                if (!line) return;  // 跳過空行
 
-                const [syllablePart, meaningPart] = line.split(separator);
-                if (syllablePart && meaningPart) {
-                    const cleanSyllable = syllablePart.trim();
+                let englishPart = line;
+                let meaningPart = ""; // 預設沒有中文意思
+
+                // 檢查是否包含冒號 (如果使用者想加中文，還是支援)
+                if (line.includes(':') || line.includes('：')) {
+                    let separator = line.includes(':') ? ':' : '：';
+                    const parts = line.split(separator);
+                    englishPart = parts[0];
+                    if (parts.length > 1) {
+                        meaningPart = parts[1];
+                    }
+                }
+
+                if (englishPart) {
+                    const cleanEnglish = englishPart.trim();
                     const cleanMeaning = meaningPart.trim();
-                    const fullWord = cleanSyllable.replace(/-/g, ''); // 去掉 - 變成完整單字
+                    const fullWord = cleanEnglish.replace(/-/g, ''); // 朗讀用的完整單字
                     
+                    // 自動拆解功能
+                    const hyphenatedText = autoHyphenate(cleanEnglish);
+
                     wordList.push({
-                        text: cleanSyllable,
+                        text: hyphenatedText,
                         chinese: cleanMeaning,
                         full: fullWord
                     });
@@ -334,13 +390,12 @@ wash-rooms : 洗手間`;
             });
 
             if (wordList.length === 0) {
-                alert("請至少輸入一個生詞！格式：word : 意思");
+                alert("請至少輸入一個生詞！");
                 return;
             }
 
             // 獲取選擇的語音物件
             const voices = window.speechSynthesis.getVoices();
-            // 這裡重新篩選一次以確保 index 對應正確 (如果做了 filter)
             const englishVoices = voices.filter(v => v.lang.startsWith('en'));
             const voicesToShow = englishVoices.length > 0 ? englishVoices : voices;
             
@@ -351,13 +406,11 @@ wash-rooms : 洗手間`;
                 selectedVoice = null;
             }
 
-            // 切換介面
             document.getElementById('editMode').classList.remove('active');
             document.getElementById('learningMode').classList.add('active');
             
             currentIndex = 0;
             updateDisplay();
-            // 預讀第一個字 (可能被瀏覽器阻擋，視情況)
             setTimeout(speakCurrentWord, 500);
         }
 
@@ -385,12 +438,17 @@ wash-rooms : 洗手間`;
             const chineseText = document.getElementById('chineseText');
             const progressText = document.getElementById('progressText');
 
-            chineseText.innerText = wordData.chinese;
+            // 邏輯：如果有中文才顯示，沒有就隱藏
+            if (wordData.chinese) {
+                chineseText.innerText = wordData.chinese;
+                chineseText.style.display = 'block';
+            } else {
+                chineseText.style.display = 'none';
+            }
+
             progressText.innerText = `單字 ${currentIndex + 1} / ${wordList.length}`;
             syllableBox.innerHTML = '';
 
-            // 處理空格 (片語) 和連字號 (音節)
-            // 邏輯：先用空格切開單字，再用連字號切開音節
             const parts = wordData.text.split(' ');
             
             parts.forEach((part, partIndex) => {
@@ -418,7 +476,6 @@ wash-rooms : 洗手間`;
             const wordData = wordList[currentIndex];
             const utterance = new SpeechSynthesisUtterance(wordData.full);
             
-            // 套用使用者設定
             if (selectedVoice) {
                 utterance.voice = selectedVoice;
             } else {
@@ -431,7 +488,6 @@ wash-rooms : 洗手間`;
             window.speechSynthesis.cancel(); 
             window.speechSynthesis.speak(utterance);
 
-            // 動畫
             const card = document.querySelector('.card');
             card.style.transform = "scale(1.02)";
             setTimeout(() => { card.style.transform = "scale(1)"; }, 200);
